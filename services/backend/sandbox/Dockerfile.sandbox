@@ -1,0 +1,13 @@
+FROM python:3.11-slim-bookworm
+
+RUN groupadd -g 10001 sandboxgroup && \
+    useradd -u 10001 -g sandboxgroup -s /bin/false sandboxuser
+
+WORKDIR /sandbox
+COPY runner_script.py /sandbox/runner_script.py
+COPY tracer_python.py /sandbox/tracer_python.py
+
+RUN chown -R root:root /sandbox && chmod -R 755 /sandbox
+USER sandboxuser:sandboxgroup
+
+ENTRYPOINT ["python3", "/sandbox/runner_script.py"]
