@@ -1,11 +1,13 @@
 import { ITraceEvent, IStackFrame, IHeapObject } from "@/types/trace";
 import { Node, Edge } from "@xyflow/react";
 import { computeFrameDiff, IFrameDiffResult } from "./frameDiffEngine";
+import { analyzeMemoryLayout, IMemoryAnalysisResult } from "./memory/memoryLayoutEngine";
 
 export interface INormalizedCanvasData {
   nodes: Node[];
   edges: Edge[];
   diffResult: IFrameDiffResult;
+  memoryAnalysis: IMemoryAnalysisResult;
 }
 
 export function normalizeTraceToGraph(
@@ -13,15 +15,17 @@ export function normalizeTraceToGraph(
   previousEvent: ITraceEvent | null = null
 ): INormalizedCanvasData {
   const diffResult = computeFrameDiff(previousEvent, currentEvent);
+  const memoryAnalysis = analyzeMemoryLayout(currentEvent);
 
   if (!currentEvent) {
-    return { nodes: [], edges: [], diffResult };
+    return { nodes: [], edges: [], diffResult, memoryAnalysis };
   }
 
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
   const { stack_frames, heap_objects } = currentEvent;
+  const garbageObjIds = new Set(memoryAnalysis.garbageObjects.map(g => g.objId));
 
   // 1. Stack Frame Nodes (Left Column: x = 50)
   let currentY = 50;
@@ -46,15 +50,18 @@ export function normalizeTraceToGraph(
     Object.entries(frame.locals).forEach(([varName, val]) => {
       if (val.kind === "reference" && val.target) {
         const isVarChanged = Boolean(diffResult.changedVariables[varName]);
+        const refCount = memoryAnalysis.refCounts[val.target] || 1;
+        const isAliased = refCount > 1;
+
         edges.push({
           id: `edge_${frameNodeId}_${varName}_to_${val.target}`,
           source: frameNodeId,
           target: `heap_${val.target}`,
-          label: varName,
+          label: isAliased ? `${varName} (aliased)` : varName,
           animated: true,
           style: {
-            stroke: isVarChanged ? "#388bfd" : "#58a6ff",
-            strokeWidth: isVarChanged ? 3 : 2
+            stroke: isAliased ? "#f59e0b" : isVarChanged ? "#388bfd" : "#58a6ff",
+            strokeWidth: isAliased ? 3 : isVarChanged ? 3 : 2
           }
         });
       }
@@ -68,6 +75,7 @@ export function normalizeTraceToGraph(
   Object.entries(heap_objects).forEach(([objId, objData]: [string, IHeapObject]) => {
     const heapNodeId = `heap_${objId}`;
     const nodeDiff = diffResult.changedHeapNodes[objId];
+    const isGarbage = garbageObjIds.has(objId);
 
     if (objData.kind === "sequence") {
       nodes.push({
@@ -77,7 +85,8 @@ export function normalizeTraceToGraph(
         data: {
           type: objData.type,
           items: objData.value,
-          highlightIndices: nodeDiff?.changedIndices || []
+          highlightIndices: nodeDiff?.changedIndices || [],
+          isGarbage
         }
       });
       heapY += 150;
@@ -88,7 +97,8 @@ export function normalizeTraceToGraph(
         position: { x: 550, y: heapY },
         data: {
           entries: objData.value,
-          highlightKeys: nodeDiff?.changedKeys || []
+          highlightKeys: nodeDiff?.changedKeys || [],
+          isGarbage
         }
       });
       heapY += 180;
@@ -101,7 +111,8 @@ export function normalizeTraceToGraph(
           className: objData.type,
           fields: objData.fields,
           repr: objData.repr,
-          highlightFields: nodeDiff?.changedFields || []
+          highlightFields: nodeDiff?.changedFields || [],
+          isGarbage
         }
       });
       heapY += 180;
@@ -116,5 +127,5 @@ export function normalizeTraceToGraph(
     }
   });
 
-  return { nodes, edges, diffResult };
+  return { nodes, edges, diffResult, memoryAnalysis };
 }

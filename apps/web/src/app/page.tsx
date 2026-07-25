@@ -7,6 +7,7 @@ import { ControlBar } from "@/components/controls/ControlBar";
 import { AICompanionPanel } from "@/components/inspectors/AICompanionPanel";
 import { StepChangesPanel } from "@/components/inspectors/StepChangesPanel";
 import { AlgorithmMetadataPanel } from "@/components/inspectors/AlgorithmMetadataPanel";
+import { MemoryInsightsPanel } from "@/components/inspectors/MemoryInsightsPanel";
 import { VariableInspector } from "@/components/inspectors/VariableInspector";
 import { ConsoleOutput } from "@/components/inspectors/ConsoleOutput";
 
@@ -19,6 +20,7 @@ import { usePlaybackStore } from "@/store/usePlaybackStore";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 import { computeFrameDiff } from "@/lib/frameDiffEngine";
+import { analyzeMemoryLayout } from "@/lib/memory/memoryLayoutEngine";
 import { detectorManager } from "@/lib/algorithms/detectorManager";
 import { generateExecutionStory } from "@/lib/learning/narrativeGenerator";
 import { generatePredictionQuestions } from "@/lib/learning/predictionEngine";
@@ -48,6 +50,11 @@ export default function Home() {
   const diffResult = useMemo(() => {
     return computeFrameDiff(previousStepEvent, currentStepEvent);
   }, [previousStepEvent, currentStepEvent]);
+
+  // Memory & Garbage Collection Analysis
+  const memoryAnalysis = useMemo(() => {
+    return analyzeMemoryLayout(currentStepEvent);
+  }, [currentStepEvent]);
 
   // Algorithm Intelligence Detection
   const algorithmResult = useMemo(() => {
@@ -98,7 +105,7 @@ export default function Home() {
                 {algorithmResult?.algorithmName || "Python MVP"}
               </span>
             </h1>
-            <p className="text-[11px] text-gray-400">Interactive CS Learning Platform & Visual AI Tutor</p>
+            <p className="text-[11px] text-gray-400">Interactive CS Learning Platform & Memory Visualization Engine</p>
           </div>
         </div>
 
@@ -110,7 +117,7 @@ export default function Home() {
             title="Toggle Prediction Mode (P)"
             className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isPredictionMode
-                ? "bg-indigo-950/80 border-indigo-500 text-indigo-300 ring-2 ring-indigo-500/40"
+                ? "bg-indigo-950/80 border-indigo-500 text-[#79c0ff] ring-2 ring-indigo-500/40"
                 : "bg-[#21262d] border-[#30363d] text-gray-300 hover:text-white"
             }`}
           >
@@ -157,11 +164,11 @@ export default function Home() {
             Bubble Sort
           </button>
           <button
-            onClick={() => setCode(`def binary_search(arr, target):\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1\n\nidx = binary_search([1, 3, 5, 7, 9], 7)\nprint("Target at:", idx)`)}
-            aria-label="Load Binary Search Sample"
+            onClick={() => setCode(`a = [10, 20, 30]\nb = a\nb.append(40)\nprint("Aliased list:", a)`)}
+            aria-label="Load Reference Aliasing Sample"
             className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
           >
-            Binary Search
+            Aliasing & Heap Ref
           </button>
         </div>
       </header>
@@ -191,8 +198,9 @@ export default function Home() {
           )}
         </div>
 
-        {/* Right Column: Narrative, AI Companion, Step Changes & Inspectors (3 cols) */}
+        {/* Right Column: Memory Insights, Narrative, AI Companion & Inspectors (3 cols) */}
         <div className="col-span-3 h-full bg-[#0d1117] p-4 flex flex-col gap-3 overflow-y-auto">
+          <MemoryInsightsPanel memoryAnalysis={memoryAnalysis} />
           <ExecutionStoryPanel
             storySteps={storySteps}
             currentStepIndex={currentStepIndex}

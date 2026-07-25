@@ -4,6 +4,7 @@ import React, { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Handle, Position } from "@xyflow/react";
 import { IVariableValue } from "@/types/trace";
+import { AlertOctagon } from "lucide-react";
 
 interface ArrayRendererProps {
   data: {
@@ -11,15 +12,23 @@ interface ArrayRendererProps {
     type?: string;
     items?: IVariableValue[];
     highlightIndices?: number[];
+    isGarbage?: boolean;
   };
 }
 
 const ArrayRendererComponent: React.FC<ArrayRendererProps> = ({ data }) => {
   const items = data.items || [];
   const highlightIndices = data.highlightIndices || [];
+  const isGarbage = data.isGarbage || false;
 
   return (
-    <div className="bg-[#161b22] border-2 border-[#388bfd] rounded-xl p-3 shadow-2xl min-w-[280px]">
+    <div
+      className={`bg-[#161b22] border-2 rounded-xl p-3 shadow-2xl min-w-[280px] transition-all ${
+        isGarbage
+          ? "border-dashed border-red-500/80 opacity-70 bg-red-950/20 ring-2 ring-red-500/30"
+          : "border-[#388bfd]"
+      }`}
+    >
       <Handle type="target" position={Position.Left} className="w-3 h-3 bg-[#58a6ff]" />
 
       {/* Header */}
@@ -32,6 +41,12 @@ const ArrayRendererComponent: React.FC<ArrayRendererProps> = ({ data }) => {
             len = {items.length}
           </span>
         </div>
+
+        {isGarbage && (
+          <span className="text-[10px] bg-red-950 border border-red-500 text-red-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
+            <AlertOctagon className="w-3 h-3 text-red-400" /> Garbage
+          </span>
+        )}
       </div>
 
       {/* Array Cells Grid */}

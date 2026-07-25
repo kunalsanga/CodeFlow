@@ -16,7 +16,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   currentStepEvent,
   previousStepEvent = null
 }) => {
-  const { nodes, edges, diffResult } = useMemo(() => {
+  const { nodes, edges } = useMemo(() => {
     return normalizeTraceToGraph(currentStepEvent, previousStepEvent);
   }, [currentStepEvent, previousStepEvent]);
 

@@ -3,13 +3,14 @@
 import React, { useState, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Handle, Position } from "@xyflow/react";
-import { ChevronDown, ChevronRight, KeyRound } from "lucide-react";
+import { ChevronDown, ChevronRight, KeyRound, AlertOctagon } from "lucide-react";
 import { IVariableValue } from "@/types/trace";
 
 interface DictionaryRendererProps {
   data: {
     label?: string;
     entries?: Record<string, IVariableValue>;
+    isGarbage?: boolean;
   };
 }
 
@@ -17,9 +18,16 @@ const DictionaryRendererComponent: React.FC<DictionaryRendererProps> = ({ data }
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const entries = data.entries || {};
   const entryKeys = Object.keys(entries);
+  const isGarbage = data.isGarbage || false;
 
   return (
-    <div className="bg-[#161b22] border-2 border-emerald-500/80 rounded-xl p-3 shadow-2xl min-w-[260px]">
+    <div
+      className={`bg-[#161b22] border-2 rounded-xl p-3 shadow-2xl min-w-[260px] transition-all ${
+        isGarbage
+          ? "border-dashed border-red-500/80 opacity-70 bg-red-950/20 ring-2 ring-red-500/30"
+          : "border-emerald-500/80"
+      }`}
+    >
       <Handle type="target" position={Position.Left} className="w-3 h-3 bg-emerald-400" />
 
       {/* Header */}
@@ -36,6 +44,12 @@ const DictionaryRendererComponent: React.FC<DictionaryRendererProps> = ({ data }
         <span className="text-[10px] bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded-full font-mono">
           {entryKeys.length} keys
         </span>
+
+        {isGarbage && (
+          <span className="text-[10px] bg-red-950 border border-red-500 text-red-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
+            <AlertOctagon className="w-3 h-3 text-red-400" /> Garbage
+          </span>
+        )}
       </div>
 
       {/* Key-Value Card Body */}
