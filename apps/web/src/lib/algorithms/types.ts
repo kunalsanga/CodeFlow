@@ -8,6 +8,7 @@ export type VisualizationMode =
   | "SEARCH_BINARY"
   | "SEARCH_LINEAR"
   | "RECURSION_TREE"
+  | "BINARY_TREE"
   | "GRAPH_TRAVERSAL";
 
 export interface IAlgorithmMetrics {

@@ -3,7 +3,7 @@ import { ITraceEvent } from "@/types/trace";
 
 export const treeDetector: IAlgorithmDetector = {
   name: "Binary Search Tree",
-  mode: "BINARY_TREE" as any,
+  mode: "BINARY_TREE",
 
   detect(trace: ITraceEvent[]): IAlgorithmResult | null {
     if (!trace || trace.length < 3) return null;
@@ -27,7 +27,7 @@ export const treeDetector: IAlgorithmDetector = {
 
     return {
       algorithmName: "Binary Search Tree (BST)",
-      mode: "BINARY_TREE" as any,
+      mode: "BINARY_TREE",
       confidence: 0.99, // Highest priority over generic recursion
       metadata: {
         name: "Binary Search Tree (BST)",

@@ -169,6 +169,13 @@ export default function Home() {
             >
               Aliasing (Heap RAM)
             </button>
+            <button
+              onClick={() => setCode(`class Node:\n    def __init__(self, value):\n        self.value = value\n        self.left = None\n        self.right = None\n\ndef insert(root, value):\n    if root is None:\n        return Node(value)\n\n    if value < root.value:\n        root.left = insert(root.left, value)\n    else:\n        root.right = insert(root.right, value)\n\n    return root\n\nroot = None\nfor v in [50, 30, 70, 20, 40, 60, 80]:\n    root = insert(root, v)\nprint("BST built")`)}
+              aria-label="Load BST Sample"
+              className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+            >
+              BST
+            </button>
           </div>
         </div>
       </header>
@@ -185,6 +192,8 @@ export default function Home() {
           <VisualizerCanvas
             currentStepEvent={currentStepEvent}
             previousStepEvent={previousStepEvent}
+            allTraceEvents={executionPayload?.trace || []}
+            currentStepIndex={currentStepIndex}
             mode={algorithmResult?.mode}
           />
 

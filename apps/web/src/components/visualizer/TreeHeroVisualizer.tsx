@@ -1,141 +1,226 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ITraceEvent, IHeapObject } from "@/types/trace";
-import { GitFork, Sparkles, ArrowLeft, ArrowRight, Activity } from "lucide-react";
-import { springPhysics } from "@/lib/animation/motionPresets";
-import { generateSemanticEventStream } from "@/lib/events/semanticEventEngine";
+import { ITraceEvent } from "@/types/trace";
+import { IBSTSnapshot, IBSTNodeState, buildBSTSnapshotsFromTrace } from "@/lib/events/semanticEventEngine";
+import { GitFork, Activity } from "lucide-react";
+
+// ============================================================
+// TREE LAYOUT ENGINE
+// Computes (x, y) positions for each node in a binary tree
+// using an inorder-position algorithm for balanced spacing.
+// ============================================================
+
+interface IPositionedNode {
+  id: string;
+  val: number;
+  x: number;
+  y: number;
+  leftId: string | null;
+  rightId: string | null;
+}
+
+function layoutTree(
+  rootId: string | null,
+  nodes: Record<string, IBSTNodeState>
+): IPositionedNode[] {
+  if (!rootId || !nodes[rootId]) return [];
+
+  const positioned: IPositionedNode[] = [];
+  let inorderIndex = 0;
+
+  const NODE_X_SPACING = 80;
+  const NODE_Y_SPACING = 90;
+
+  function inorderTraverse(nodeId: string | null, depth: number) {
+    if (!nodeId || !nodes[nodeId]) return;
+
+    const node = nodes[nodeId];
+
+    // Left subtree first
+    inorderTraverse(node.leftId, depth + 1);
+
+    // Position this node
+    positioned.push({
+      id: node.id,
+      val: node.val,
+      x: inorderIndex * NODE_X_SPACING,
+      y: depth * NODE_Y_SPACING,
+      leftId: node.leftId,
+      rightId: node.rightId,
+    });
+    inorderIndex++;
+
+    // Right subtree
+    inorderTraverse(node.rightId, depth + 1);
+  }
+
+  inorderTraverse(rootId, 0);
+
+  // Center the tree horizontally
+  if (positioned.length > 0) {
+    const minX = Math.min(...positioned.map(n => n.x));
+    const maxX = Math.max(...positioned.map(n => n.x));
+    const centerOffset = (minX + maxX) / 2;
+    positioned.forEach(n => { n.x -= centerOffset; });
+  }
+
+  return positioned;
+}
+
+// ============================================================
+// TREE HERO VISUALIZER
+// Renders an actual hierarchical tree with edges and nodes.
+// Consumes ONLY semantic events — never reads stack frames.
+// ============================================================
 
 interface TreeHeroVisualizerProps {
   currentEvent: ITraceEvent | null;
+  allTraceEvents?: ITraceEvent[];
+  currentStepIndex?: number;
 }
 
-interface IBSTNode {
-  id: string;
-  val: number;
-  leftId?: string;
-  rightId?: string;
-}
+const TreeHeroVisualizerComponent: React.FC<TreeHeroVisualizerProps> = ({
+  currentEvent,
+  allTraceEvents,
+  currentStepIndex = 0
+}) => {
+  // Build full BST snapshot timeline from trace
+  const snapshots = useMemo(() => {
+    if (!allTraceEvents || allTraceEvents.length === 0) return [];
+    return buildBSTSnapshotsFromTrace(allTraceEvents);
+  }, [allTraceEvents]);
 
-export const TreeHeroVisualizerComponent: React.FC<TreeHeroVisualizerProps> = ({ currentEvent }) => {
-  if (!currentEvent) return null;
+  // Get the snapshot for the current step
+  const snapshot: IBSTSnapshot | null = snapshots[currentStepIndex] || null;
 
-  const topFrame = currentEvent.stack_frames[currentEvent.stack_frames.length - 1];
-  const funcName = topFrame?.function_name || "insert";
-  const locals = topFrame?.locals || {};
+  if (!snapshot) return null;
 
-  // Extract inserted value & root
-  const valueToInsert = locals["value"]?.kind === "primitive" ? Number(locals["value"].value) : null;
+  const { rootId, nodes, activeInsertVal, activeVisitId, semanticEvent } = snapshot;
+  const positionedNodes = layoutTree(rootId, nodes);
+  const nodeCount = Object.keys(nodes).length;
 
-  // Extract tree nodes from heap
-  const bstNodesMap: Record<string, IBSTNode> = {};
-
-  Object.entries(currentEvent.heap_objects).forEach(([objId, obj]: [string, IHeapObject]) => {
-    if (obj.kind === "object" && obj.fields) {
-      const keys = Object.keys(obj.fields).map(k => k.toLowerCase());
-      if (keys.includes("left") || keys.includes("right")) {
-        const valObj = obj.fields["val"] || obj.fields["value"] || obj.fields["key"] || obj.fields["data"];
-        const numVal = valObj && valObj.kind === "primitive" ? Number(valObj.value) : 0;
-
-        const leftObj = obj.fields["left"];
-        const rightObj = obj.fields["right"];
-
-        bstNodesMap[objId] = {
-          id: objId,
-          val: numVal,
-          leftId: leftObj && leftObj.kind === "reference" ? leftObj.target : undefined,
-          rightId: rightObj && rightObj.kind === "reference" ? rightObj.target : undefined
-        };
-      }
-    }
-  });
-
-  const nodeCount = Object.keys(bstNodesMap).length;
-  const semanticEvents = generateSemanticEventStream([currentEvent]);
-  const activeSemanticEvent = semanticEvents[0];
+  // Build a lookup from node id -> positioned node for edge drawing
+  const posMap: Record<string, IPositionedNode> = {};
+  positionedNodes.forEach(n => { posMap[n.id] = n; });
 
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center p-8 bg-[#0b0e14]">
+    <div className="h-full w-full flex flex-col items-center justify-center p-6 bg-[#0b0e14] overflow-hidden">
       {/* Header Badge */}
-      <div className="mb-4 flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/40">
+      <div className="mb-3 flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/40">
         <GitFork className="w-4 h-4 text-emerald-400" />
         <span className="text-xs font-bold font-mono text-emerald-300 uppercase tracking-wider">
-          BST Semantic Event Stream Visualizer
+          Binary Search Tree Visualizer
         </span>
       </div>
 
-      {/* Semantic Event Operation Status Card */}
-      <div className="mb-6 bg-[#161b22]/90 border-2 border-emerald-500/60 rounded-xl p-3.5 shadow-2xl flex items-center gap-6 font-mono text-xs">
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-          <span className="text-gray-400 font-semibold uppercase">Semantic Event:</span>
-          <span className="font-extrabold text-emerald-300 bg-emerald-950/80 px-2.5 py-1 rounded border border-emerald-500/40 text-sm">
-            {activeSemanticEvent ? activeSemanticEvent.description : `${funcName}(val=${valueToInsert !== null ? valueToInsert : "?"})`}
+      {/* Semantic Event Decision Banner */}
+      {semanticEvent && semanticEvent.type !== "STEP" && (
+        <motion.div
+          key={`event_${semanticEvent.stepIndex}_${semanticEvent.type}`}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 bg-[#161b22]/90 border-2 border-emerald-500/60 rounded-xl px-5 py-3 shadow-2xl font-mono text-sm flex items-center gap-3"
+        >
+          <Activity className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
+          <span className="font-extrabold text-emerald-300">
+            {semanticEvent.description}
           </span>
-        </div>
+        </motion.div>
+      )}
 
-        <div className="h-4 w-px bg-[#30363d]" />
-
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span className="text-gray-200 font-bold">
-            {nodeCount} Tree Node(s) Allocated
-          </span>
-        </div>
-      </div>
-
-      {/* Hierarchical Tree Nodes Canvas */}
+      {/* Tree Canvas */}
       {nodeCount === 0 ? (
-        <div className="text-gray-500 italic text-sm">Executing BST initialization...</div>
+        <div className="text-gray-500 italic text-sm">Tree is empty — inserting first node...</div>
       ) : (
-        <div className="flex flex-col items-center justify-center gap-8 py-8 px-10 bg-[#161b22]/80 border-2 border-[#30363d] rounded-2xl shadow-2xl min-w-[480px]">
-          <AnimatePresence mode="popLayout">
-            <div className="flex items-center justify-center gap-6 flex-wrap">
-              {Object.values(bstNodesMap).map((node, idx) => {
-                const isInsertingTarget = valueToInsert !== null && node.val === valueToInsert;
+        <div className="relative bg-[#161b22]/80 border-2 border-[#30363d] rounded-2xl shadow-2xl p-8 min-w-[400px] min-h-[300px] flex items-center justify-center">
+          {/* SVG Edges Layer */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{ overflow: "visible" }}
+          >
+            {positionedNodes.map(pNode => {
+              const parentX = pNode.x + 200;
+              const parentY = pNode.y + 40;
 
-                return (
-                  <motion.div
-                    key={`bst_semantic_node_${node.id}_${idx}`}
-                    layout
-                    initial={{ scale: 0.7, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1, y: isInsertingTarget ? -10 : 0 }}
-                    exit={{ scale: 0.7, opacity: 0 }}
-                    transition={springPhysics}
-                    className="flex flex-col items-center relative"
+              return (
+                <React.Fragment key={`edges_${pNode.id}`}>
+                  {pNode.leftId && posMap[pNode.leftId] && (
+                    <motion.line
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                      x1={parentX}
+                      y1={parentY + 24}
+                      x2={posMap[pNode.leftId].x + 200}
+                      y2={posMap[pNode.leftId].y + 40 - 24}
+                      stroke="#34d399"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                    />
+                  )}
+                  {pNode.rightId && posMap[pNode.rightId] && (
+                    <motion.line
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                      x1={parentX}
+                      y1={parentY + 24}
+                      x2={posMap[pNode.rightId].x + 200}
+                      y2={posMap[pNode.rightId].y + 40 - 24}
+                      stroke="#22d3ee"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </svg>
+
+          {/* Nodes Layer */}
+          <AnimatePresence>
+            {positionedNodes.map(pNode => {
+              const isNewlyInserted = activeInsertVal !== null && pNode.val === activeInsertVal;
+              const isBeingVisited = pNode.id === activeVisitId;
+
+              return (
+                <motion.div
+                  key={`tree_node_${pNode.id}`}
+                  layout
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  className="absolute flex flex-col items-center"
+                  style={{
+                    left: pNode.x + 200 - 24,
+                    top: pNode.y + 40 - 24,
+                  }}
+                >
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center font-mono font-extrabold text-lg shadow-2xl transition-all ${
+                      isNewlyInserted
+                        ? "bg-amber-600 text-white border-2 border-white ring-4 ring-amber-500/50 shadow-amber-500/60"
+                        : isBeingVisited
+                        ? "bg-blue-600 text-white border-2 border-blue-300 ring-4 ring-blue-500/50 shadow-blue-500/60"
+                        : "bg-emerald-950 text-emerald-200 border-2 border-emerald-400"
+                    }`}
                   >
-                    {/* BST Circular Node Block */}
-                    <div
-                      className={`w-16 h-16 rounded-full flex items-center justify-center font-mono font-extrabold text-xl shadow-2xl transition-all ${
-                        isInsertingTarget
-                          ? "bg-amber-600 text-white border-2 border-white ring-4 ring-amber-500/60 scale-110 shadow-amber-500/60"
-                          : "bg-emerald-950 text-emerald-200 border-2 border-emerald-400"
-                      }`}
-                    >
-                      {node.val}
-                    </div>
-
-                    {/* Left & Right Branch Indicator Badges */}
-                    <div className="flex items-center gap-2 mt-2 font-mono text-[10px] font-bold">
-                      {node.leftId && (
-                        <span className="flex items-center text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/40">
-                          <ArrowLeft className="w-2.5 h-2.5 mr-0.5" /> L
-                        </span>
-                      )}
-                      {node.rightId && (
-                        <span className="flex items-center text-cyan-400 bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/40">
-                          R <ArrowRight className="w-2.5 h-2.5 ml-0.5" />
-                        </span>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                    {pNode.val}
+                  </div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
       )}
+
+      {/* Node Count Footer */}
+      <div className="mt-3 text-xs text-gray-500 font-mono">
+        {nodeCount} node{nodeCount !== 1 ? "s" : ""} in tree
+      </div>
     </div>
   );
 };
