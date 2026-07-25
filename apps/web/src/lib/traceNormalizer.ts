@@ -2,6 +2,7 @@ import { ITraceEvent, IStackFrame, IHeapObject } from "@/types/trace";
 import { Node, Edge } from "@xyflow/react";
 import { computeFrameDiff, IFrameDiffResult } from "./frameDiffEngine";
 import { analyzeMemoryLayout, IMemoryAnalysisResult } from "./memory/memoryLayoutEngine";
+import { detectDataStructures } from "./datastructures/dataStructureDetector";
 
 export interface INormalizedCanvasData {
   nodes: Node[];
@@ -16,6 +17,7 @@ export function normalizeTraceToGraph(
 ): INormalizedCanvasData {
   const diffResult = computeFrameDiff(previousEvent, currentEvent);
   const memoryAnalysis = analyzeMemoryLayout(currentEvent);
+  const detectedStructures = detectDataStructures(currentEvent);
 
   if (!currentEvent) {
     return { nodes: [], edges: [], diffResult, memoryAnalysis };
@@ -26,6 +28,12 @@ export function normalizeTraceToGraph(
 
   const { stack_frames, heap_objects } = currentEvent;
   const garbageObjIds = new Set(memoryAnalysis.garbageObjects.map(g => g.objId));
+
+  // Map of object IDs to specialized data structure type
+  const dsMap: Record<string, string> = {};
+  detectedStructures.forEach((ds) => {
+    if (ds.rootObjId) dsMap[ds.rootObjId] = ds.type;
+  });
 
   // 1. Stack Frame Nodes (Left Column: x = 50)
   let currentY = 50;
@@ -76,8 +84,33 @@ export function normalizeTraceToGraph(
     const heapNodeId = `heap_${objId}`;
     const nodeDiff = diffResult.changedHeapNodes[objId];
     const isGarbage = garbageObjIds.has(objId);
+    const dsType = dsMap[objId];
 
-    if (objData.kind === "sequence") {
+    if (dsType === "LINKED_LIST") {
+      nodes.push({
+        id: heapNodeId,
+        type: "linkedListNode",
+        position: { x: 550, y: heapY },
+        data: {
+          className: objData.type,
+          fields: objData.kind === "object" ? objData.fields : {},
+          isGarbage
+        }
+      });
+      heapY += 140;
+    } else if (dsType === "BINARY_TREE") {
+      nodes.push({
+        id: heapNodeId,
+        type: "treeNode",
+        position: { x: 550, y: heapY },
+        data: {
+          className: objData.type,
+          fields: objData.kind === "object" ? objData.fields : {},
+          isGarbage
+        }
+      });
+      heapY += 160;
+    } else if (objData.kind === "sequence") {
       nodes.push({
         id: heapNodeId,
         type: "arrayNode",
