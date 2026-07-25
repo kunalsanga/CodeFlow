@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { Play, Pause, SkipBack, SkipForward, RotateCcw, PlayCircle } from "lucide-react";
+import React, { useEffect, useMemo } from "react";
+import { Play, Pause, SkipBack, SkipForward, RotateCcw, PlayCircle, Sparkles } from "lucide-react";
 import { useExecutionStore } from "@/store/useExecutionStore";
 import { usePlaybackStore } from "@/store/usePlaybackStore";
 
@@ -22,6 +22,24 @@ export const ControlBar: React.FC = () => {
   } = usePlaybackStore();
 
   const currentEvent = executionPayload?.trace?.[currentStepIndex];
+
+  // Derive Concept Milestone Title (e.g. "Comparing elements", "Swapping", "Function Call")
+  const conceptMilestone = useMemo(() => {
+    if (!currentEvent) return "Ready to Visualize";
+
+    if (currentEvent.event_type === "call") {
+      const funcName = currentEvent.stack_frames[currentEvent.stack_frames.length - 1]?.function_name || "function";
+      return `Function Call \`${funcName}()\``;
+    }
+    if (currentEvent.event_type === "return") {
+      return "Returning from frame";
+    }
+    if (currentEvent.heap_objects && Object.keys(currentEvent.heap_objects).length > 0) {
+      return `Mutating RAM Heap Memory (Line ${currentEvent.line_number})`;
+    }
+
+    return `Executing Line ${currentEvent.line_number}`;
+  }, [currentEvent]);
 
   // Sync max steps when execution payload changes
   useEffect(() => {
@@ -55,7 +73,7 @@ export const ControlBar: React.FC = () => {
         {isExecuting ? "Executing..." : "Visualize Execution"}
       </button>
 
-      {/* Center: Playback Controls & Timeline Scrubber */}
+      {/* Center: Playback Controls & Concept Timeline Scrubber */}
       <div className="flex-1 w-full max-w-2xl flex items-center gap-4">
         <div className="flex items-center gap-1">
           <button
@@ -96,14 +114,15 @@ export const ControlBar: React.FC = () => {
           </button>
         </div>
 
-        {/* Timeline Slider with Step Metadata */}
+        {/* Concept Milestone Header & Scrubber Slider */}
         <div className="flex-1 flex flex-col gap-1">
-          <div className="flex items-center justify-between text-[11px] font-mono text-gray-300">
-            <span>
-              {currentEvent ? `Step ${currentStepIndex + 1} | Line ${currentEvent.line_number}` : "Step 0"}
+          <div className="flex items-center justify-between text-xs font-mono text-gray-200">
+            <span className="flex items-center gap-1.5 font-bold text-[#79c0ff]">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              {conceptMilestone}
             </span>
-            <span className="text-[#79c0ff]">
-              {currentEvent ? currentEvent.event_type.toUpperCase() : ""}
+            <span className="text-gray-400 text-[11px]">
+              {maxSteps > 0 ? `${currentStepIndex + 1} of ${maxSteps}` : "0 / 0"}
             </span>
           </div>
 
@@ -118,9 +137,6 @@ export const ControlBar: React.FC = () => {
               aria-label="Timeline Scrubber Slider"
               className="w-full accent-[#58a6ff] cursor-pointer disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[#58a6ff] rounded"
             />
-            <span className="text-xs font-mono text-gray-400 min-w-[70px] text-right">
-              {maxSteps > 0 ? `${currentStepIndex + 1} / ${maxSteps}` : "0 / 0"}
-            </span>
           </div>
         </div>
       </div>
