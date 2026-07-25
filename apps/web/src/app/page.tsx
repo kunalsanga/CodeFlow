@@ -6,11 +6,13 @@ import { VisualizerCanvas } from "@/components/visualizer/VisualizerCanvas";
 import { ControlBar } from "@/components/controls/ControlBar";
 import { AICompanionPanel } from "@/components/inspectors/AICompanionPanel";
 import { StepChangesPanel } from "@/components/inspectors/StepChangesPanel";
+import { AlgorithmMetadataPanel } from "@/components/inspectors/AlgorithmMetadataPanel";
 import { VariableInspector } from "@/components/inspectors/VariableInspector";
 import { ConsoleOutput } from "@/components/inspectors/ConsoleOutput";
 import { useExecutionStore } from "@/store/useExecutionStore";
 import { usePlaybackStore } from "@/store/usePlaybackStore";
 import { computeFrameDiff } from "@/lib/frameDiffEngine";
+import { detectorManager } from "@/lib/algorithms/detectorManager";
 import { Code2, BookOpen } from "lucide-react";
 
 export default function Home() {
@@ -31,6 +33,12 @@ export default function Home() {
     return computeFrameDiff(previousStepEvent, currentStepEvent);
   }, [previousStepEvent, currentStepEvent]);
 
+  // Algorithm Intelligence Detection
+  const algorithmResult = useMemo(() => {
+    if (!executionPayload || !executionPayload.trace.length) return null;
+    return detectorManager.detectAlgorithm(executionPayload.trace);
+  }, [executionPayload]);
+
   const activeLineNumber = currentStepEvent?.line_number;
   const currentCodeSnippet = useMemo(() => {
     if (!activeLineNumber) return "";
@@ -48,9 +56,11 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-              CodeFlow <span className="text-xs font-semibold px-2 py-0.5 bg-blue-900/50 text-[#79c0ff] border border-blue-700/50 rounded-full">Python MVP</span>
+              CodeFlow <span className="text-xs font-semibold px-2 py-0.5 bg-blue-900/50 text-[#79c0ff] border border-blue-700/50 rounded-full">
+                {algorithmResult?.algorithmName || "Python MVP"}
+              </span>
             </h1>
-            <p className="text-[11px] text-gray-400">Interactive Visual Execution & Visual Diff Engine</p>
+            <p className="text-[11px] text-gray-400">Interactive Algorithm Intelligence & Educational Execution Engine</p>
           </div>
         </div>
 
@@ -72,10 +82,10 @@ export default function Home() {
             Bubble Sort
           </button>
           <button
-            onClick={() => setCode(`person = {"name": "Alice", "skills": ["Python", "Algorithms"]}\nperson["skills"].append("AI")\nprint(person)`)}
+            onClick={() => setCode(`def binary_search(arr, target):\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1\n\nidx = binary_search([1, 3, 5, 7, 9], 7)\nprint("Target at:", idx)`)}
             className="text-xs bg-[#21262d] hover:bg-[#30363d] text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
           >
-            Object & Heap Ref
+            Binary Search
           </button>
         </div>
       </header>
@@ -95,8 +105,9 @@ export default function Home() {
           />
         </div>
 
-        {/* Right Column: AI Companion, Step Changes & Inspectors (3 cols) */}
+        {/* Right Column: Algorithm Intelligence, Step Changes & Inspectors (3 cols) */}
         <div className="col-span-3 h-full bg-[#0d1117] p-4 flex flex-col gap-3 overflow-y-auto">
+          <AlgorithmMetadataPanel algorithmResult={algorithmResult} />
           <StepChangesPanel diffResult={diffResult} />
           <AICompanionPanel
             currentStepEvent={currentStepEvent}
