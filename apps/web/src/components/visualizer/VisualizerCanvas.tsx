@@ -9,6 +9,7 @@ import { customNodeTypes } from "@/components/renderers/RendererManager";
 import { SortingHeroVisualizer } from "./SortingHeroVisualizer";
 import { BinarySearchHeroVisualizer } from "./BinarySearchHeroVisualizer";
 import { RecursionHeroVisualizer } from "./RecursionHeroVisualizer";
+import { TreeHeroVisualizer } from "./TreeHeroVisualizer";
 import { VisualizationMode } from "@/lib/algorithms/types";
 import { Layers, Database } from "lucide-react";
 
@@ -28,6 +29,10 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   }, [currentStepEvent, previousStepEvent]);
 
   // Contextually render specialized algorithm visualizers
+  if (mode === "BINARY_TREE" as any) {
+    return <TreeHeroVisualizer currentEvent={currentStepEvent} />;
+  }
+
   if (mode === "SORTING_BUBBLE") {
     return <SortingHeroVisualizer currentEvent={currentStepEvent} />;
   }

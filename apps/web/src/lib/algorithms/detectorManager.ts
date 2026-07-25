@@ -3,12 +3,14 @@ import { ITraceEvent } from "@/types/trace";
 import { bubbleSortDetector } from "./plugins/bubbleSort";
 import { binarySearchDetector } from "./plugins/binarySearch";
 import { recursionTreeDetector } from "./plugins/recursionTree";
+import { treeDetector } from "./plugins/treeDetector";
 
 class AlgorithmDetectorManager {
   private detectors: IAlgorithmDetector[] = [];
 
   constructor() {
-    // Register default plugin detectors
+    // Register plugin detectors with Tree & BST prioritizing over generic recursion
+    this.register(treeDetector);
     this.register(bubbleSortDetector);
     this.register(binarySearchDetector);
     this.register(recursionTreeDetector);
