@@ -20,28 +20,23 @@ export function normalizeTraceToGraph(event: ITraceEvent | null): INormalizedCan
   let currentY = 50;
   stack_frames.forEach((frame: IStackFrame, index: number) => {
     const frameNodeId = `stack_${frame.frame_id}`;
+    const isActive = index === stack_frames.length - 1;
     
     nodes.push({
       id: frameNodeId,
-      type: "default",
+      type: "stackNode",
       position: { x: 50, y: currentY },
       data: {
-        label: `${frame.function_name}() [Line ${frame.line_number}]`
-      },
-      style: {
-        background: index === stack_frames.length - 1 ? "#1f293d" : "#161b22",
-        color: "#e6edf3",
-        border: index === stack_frames.length - 1 ? "2px solid #58a6ff" : "1px solid #30363d",
-        borderRadius: "8px",
-        padding: "12px",
-        width: "280px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+        function_name: frame.function_name,
+        line_number: frame.line_number,
+        locals: frame.locals,
+        isActive
       }
     });
 
-    // Generate variables inside frame
+    // Generate reference edges
     Object.entries(frame.locals).forEach(([varName, val]) => {
-      if (val.kind === "reference") {
+      if (val.kind === "reference" && val.target) {
         edges.push({
           id: `edge_${frameNodeId}_${varName}_to_${val.target}`,
           source: frameNodeId,
@@ -53,41 +48,56 @@ export function normalizeTraceToGraph(event: ITraceEvent | null): INormalizedCan
       }
     });
 
-    currentY += 120;
+    currentY += 160;
   });
 
-  // 2. Heap Memory Nodes (Right Column: x = 450)
+  // 2. Heap Memory Nodes (Right Column: x = 550)
   let heapY = 50;
   Object.entries(heap_objects).forEach(([objId, objData]: [string, IHeapObject]) => {
     const heapNodeId = `heap_${objId}`;
-    let label = `${objData.type}`;
 
     if (objData.kind === "sequence") {
-      const items = objData.value.map(v => v.kind === "primitive" ? String(v.value) : `->${v.target}`).join(", ");
-      label = `${objData.type} [${items}]`;
+      nodes.push({
+        id: heapNodeId,
+        type: "arrayNode",
+        position: { x: 550, y: heapY },
+        data: {
+          type: objData.type,
+          items: objData.value
+        }
+      });
+      heapY += 150;
     } else if (objData.kind === "mapping") {
-      label = `dict { ${Object.keys(objData.value).length} entries }`;
+      nodes.push({
+        id: heapNodeId,
+        type: "dictNode",
+        position: { x: 550, y: heapY },
+        data: {
+          entries: objData.value
+        }
+      });
+      heapY += 180;
     } else if (objData.kind === "object") {
-      label = `${objData.type} instance`;
+      nodes.push({
+        id: heapNodeId,
+        type: "objectNode",
+        position: { x: 550, y: heapY },
+        data: {
+          className: objData.type,
+          fields: objData.fields,
+          repr: objData.repr
+        }
+      });
+      heapY += 180;
+    } else {
+      nodes.push({
+        id: heapNodeId,
+        type: "default",
+        position: { x: 550, y: heapY },
+        data: { label: `${(objData as any).type || "object"}` }
+      });
+      heapY += 120;
     }
-
-    nodes.push({
-      id: heapNodeId,
-      type: "default",
-      position: { x: 450, y: heapY },
-      data: { label },
-      style: {
-        background: "#1c2128",
-        color: "#79c0ff",
-        border: "1px solid #388bfd",
-        borderRadius: "8px",
-        padding: "12px",
-        width: "240px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.4)"
-      }
-    });
-
-    heapY += 100;
   });
 
   return { nodes, edges };

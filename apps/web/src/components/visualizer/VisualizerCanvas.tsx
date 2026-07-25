@@ -5,6 +5,7 @@ import { ReactFlow, Background, Controls, MiniMap } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { ITraceEvent } from "@/types/trace";
 import { normalizeTraceToGraph } from "@/lib/traceNormalizer";
+import { customNodeTypes } from "@/components/renderers/RendererManager";
 
 interface VisualizerCanvasProps {
   currentStepEvent: ITraceEvent | null;
@@ -18,7 +19,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({ currentStepE
   return (
     <div className="h-full w-full bg-[#0b0e14] relative flex flex-col">
       <div className="px-4 py-2 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between z-10">
-        <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+        <span className="text-xs font-bold text-gray-200 uppercase tracking-wider">
           Execution Visualizer Canvas (Stack vs. Heap Memory)
         </span>
         {currentStepEvent && (
@@ -37,6 +38,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({ currentStepE
           <ReactFlow
             nodes={nodes}
             edges={edges}
+            nodeTypes={customNodeTypes}
             fitView
             colorMode="dark"
             className="bg-[#0b0e14]"
