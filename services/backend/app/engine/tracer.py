@@ -75,6 +75,9 @@ class ProductionTracer:
             # Capture current stdout snapshot
             stdout_snapshot = self.stdout_buffer.getvalue()
 
+            # Reset memory extractor for the current step to capture mutations and garbage collection
+            self.memory_extractor.reset()
+
             # Inspect stack frames cleanly
             stack_models: List[StackFrameModel] = []
             curr = frame
