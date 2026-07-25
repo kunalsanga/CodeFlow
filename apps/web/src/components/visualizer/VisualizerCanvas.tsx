@@ -6,21 +6,34 @@ import "@xyflow/react/dist/style.css";
 import { ITraceEvent } from "@/types/trace";
 import { normalizeTraceToGraph } from "@/lib/traceNormalizer";
 import { customNodeTypes } from "@/components/renderers/RendererManager";
-import { RecursionTreeRenderer } from "@/components/renderers/RecursionTreeRenderer";
+import { SortingHeroVisualizer } from "./SortingHeroVisualizer";
+import { RecursionHeroVisualizer } from "./RecursionHeroVisualizer";
+import { VisualizationMode } from "@/lib/algorithms/types";
 import { Layers, Database } from "lucide-react";
 
 interface VisualizerCanvasProps {
   currentStepEvent: ITraceEvent | null;
   previousStepEvent?: ITraceEvent | null;
+  mode?: VisualizationMode;
 }
 
 export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   currentStepEvent,
-  previousStepEvent = null
+  previousStepEvent = null,
+  mode = "GENERIC"
 }) => {
   const { nodes, edges } = useMemo(() => {
     return normalizeTraceToGraph(currentStepEvent, previousStepEvent);
   }, [currentStepEvent, previousStepEvent]);
+
+  // Contextually render specialized algorithm visualizers
+  if (mode === "SORTING_BUBBLE") {
+    return <SortingHeroVisualizer currentEvent={currentStepEvent} />;
+  }
+
+  if (mode === "RECURSION_TREE" && currentStepEvent) {
+    return <RecursionHeroVisualizer stackFrames={currentStepEvent.stack_frames} />;
+  }
 
   return (
     <div className="h-full w-full bg-[#0b0e14] relative flex flex-col">
@@ -49,15 +62,6 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
 
       {/* Main Canvas Area */}
       <div className="flex-1 w-full h-full relative">
-        {/* Integrated Recursion Tree Component Overlay */}
-        {currentStepEvent && currentStepEvent.stack_frames.length >= 2 && (
-          <div className="absolute top-4 left-4 z-20 pointer-events-none">
-            <div className="pointer-events-auto">
-              <RecursionTreeRenderer stackFrames={currentStepEvent.stack_frames} />
-            </div>
-          </div>
-        )}
-
         {nodes.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-2">
             <p className="text-sm">Click "Visualize Execution" to step through memory & execution state.</p>

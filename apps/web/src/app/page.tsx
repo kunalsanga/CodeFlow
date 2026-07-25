@@ -25,7 +25,7 @@ import { detectorManager } from "@/lib/algorithms/detectorManager";
 import { generateExecutionStory } from "@/lib/learning/narrativeGenerator";
 import { generatePredictionQuestions } from "@/lib/learning/predictionEngine";
 
-import { Code2, BookOpen, HelpCircle, BookMarked, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Code2, BookOpen, HelpCircle, BookMarked, SlidersHorizontal } from "lucide-react";
 
 export default function Home() {
   const { code, setCode, executionPayload, error: executionError } = useExecutionStore();
@@ -102,11 +102,11 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-              CodeFlow <span className="text-xs font-semibold px-2 py-0.5 bg-blue-900/50 text-[#79c0ff] border border-blue-700/50 rounded-full">
+              CodeFlow <span className="text-xs font-semibold px-2.5 py-0.5 bg-blue-900/50 text-[#79c0ff] border border-blue-700/50 rounded-full">
                 {algorithmResult?.algorithmName || "Python Visualizer"}
               </span>
             </h1>
-            <p className="text-[11px] text-gray-400">Interactive Execution & Memory Visualizer</p>
+            <p className="text-[11px] text-gray-400">Interactive Code Execution & Visual Learning Platform</p>
           </div>
         </div>
 
@@ -175,16 +175,17 @@ export default function Home() {
 
       {/* Main Workspace Split View */}
       <main className="flex-1 grid grid-cols-12 overflow-hidden">
-        {/* Left Column: Code Editor (5 cols in default mode, 4 in detail mode) */}
+        {/* Left Column: Code Editor */}
         <div className={`${showAdvancedInspectors ? "col-span-4" : "col-span-5"} h-full border-r border-[#30363d] overflow-hidden transition-all`}>
           <CodeEditor activeLineNumber={activeLineNumber} />
         </div>
 
-        {/* Center Column: Visualizer Canvas (7 cols in default mode, 5 in detail mode) */}
+        {/* Center Column: Adaptive Visualizer Canvas */}
         <div className={`${showAdvancedInspectors ? "col-span-5" : "col-span-7"} h-full border-r border-[#30363d] overflow-hidden relative transition-all`}>
           <VisualizerCanvas
             currentStepEvent={currentStepEvent}
             previousStepEvent={previousStepEvent}
+            mode={algorithmResult?.mode}
           />
 
           {/* Interactive Prediction Modal Overlay */}
