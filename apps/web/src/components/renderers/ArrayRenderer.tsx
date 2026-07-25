@@ -4,7 +4,8 @@ import React, { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Handle, Position } from "@xyflow/react";
 import { IVariableValue } from "@/types/trace";
-import { AlertOctagon } from "lucide-react";
+import { swapCellVariants, springPhysics } from "@/lib/animation/motionPresets";
+import { AlertOctagon, Sparkles } from "lucide-react";
 
 interface ArrayRendererProps {
   data: {
@@ -49,7 +50,7 @@ const ArrayRendererComponent: React.FC<ArrayRendererProps> = ({ data }) => {
         )}
       </div>
 
-      {/* Array Cells Grid */}
+      {/* Array Cells Grid with Swap Lift/Drop Physics */}
       {items.length === 0 ? (
         <div className="text-center py-2 text-xs text-gray-500 italic">Empty List []</div>
       ) : (
@@ -64,13 +65,23 @@ const ArrayRendererComponent: React.FC<ArrayRendererProps> = ({ data }) => {
                   key={`cell_${idx}_${valStr}`}
                   layout
                   initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
+                  animate={isHighlighted ? "highlighted" : "initial"}
+                  variants={swapCellVariants}
                   exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  className={`flex flex-col items-center flex-shrink-0 ${
-                    isHighlighted ? "scale-105" : ""
-                  }`}
+                  transition={springPhysics}
+                  className="flex flex-col items-center flex-shrink-0 relative"
                 >
+                  {/* Swap Sparkle Icon */}
+                  {isHighlighted && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="absolute -top-3 text-amber-400 z-20"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 fill-amber-400" />
+                    </motion.div>
+                  )}
+
                   {/* Index Label Header */}
                   <span className="text-[10px] font-mono text-gray-400 mb-1">
                     [{idx}]
@@ -80,7 +91,7 @@ const ArrayRendererComponent: React.FC<ArrayRendererProps> = ({ data }) => {
                   <div
                     className={`w-12 h-12 rounded-lg flex items-center justify-center font-mono font-bold text-sm shadow-md transition-all ${
                       isHighlighted
-                        ? "bg-[#388bfd] text-white border-2 border-white ring-4 ring-blue-500/30"
+                        ? "bg-[#388bfd] text-white border-2 border-white ring-4 ring-blue-500/40 shadow-blue-500/50"
                         : "bg-[#0d1117] text-[#e6edf3] border border-[#30363d]"
                     }`}
                   >
