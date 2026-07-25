@@ -1,27 +1,34 @@
 import { ITraceEvent, IStackFrame, IHeapObject } from "@/types/trace";
 import { Node, Edge } from "@xyflow/react";
+import { computeFrameDiff, IFrameDiffResult } from "./frameDiffEngine";
 
 export interface INormalizedCanvasData {
   nodes: Node[];
   edges: Edge[];
+  diffResult: IFrameDiffResult;
 }
 
-export function normalizeTraceToGraph(event: ITraceEvent | null): INormalizedCanvasData {
-  if (!event) {
-    return { nodes: [], edges: [] };
+export function normalizeTraceToGraph(
+  currentEvent: ITraceEvent | null,
+  previousEvent: ITraceEvent | null = null
+): INormalizedCanvasData {
+  const diffResult = computeFrameDiff(previousEvent, currentEvent);
+
+  if (!currentEvent) {
+    return { nodes: [], edges: [], diffResult };
   }
 
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  const { stack_frames, heap_objects } = event;
+  const { stack_frames, heap_objects } = currentEvent;
 
   // 1. Stack Frame Nodes (Left Column: x = 50)
   let currentY = 50;
   stack_frames.forEach((frame: IStackFrame, index: number) => {
     const frameNodeId = `stack_${frame.frame_id}`;
     const isActive = index === stack_frames.length - 1;
-    
+
     nodes.push({
       id: frameNodeId,
       type: "stackNode",
@@ -30,20 +37,25 @@ export function normalizeTraceToGraph(event: ITraceEvent | null): INormalizedCan
         function_name: frame.function_name,
         line_number: frame.line_number,
         locals: frame.locals,
-        isActive
+        isActive,
+        changedVars: diffResult.changedVariables
       }
     });
 
     // Generate reference edges
     Object.entries(frame.locals).forEach(([varName, val]) => {
       if (val.kind === "reference" && val.target) {
+        const isVarChanged = Boolean(diffResult.changedVariables[varName]);
         edges.push({
           id: `edge_${frameNodeId}_${varName}_to_${val.target}`,
           source: frameNodeId,
           target: `heap_${val.target}`,
           label: varName,
           animated: true,
-          style: { stroke: "#58a6ff", strokeWidth: 2 }
+          style: {
+            stroke: isVarChanged ? "#388bfd" : "#58a6ff",
+            strokeWidth: isVarChanged ? 3 : 2
+          }
         });
       }
     });
@@ -55,6 +67,7 @@ export function normalizeTraceToGraph(event: ITraceEvent | null): INormalizedCan
   let heapY = 50;
   Object.entries(heap_objects).forEach(([objId, objData]: [string, IHeapObject]) => {
     const heapNodeId = `heap_${objId}`;
+    const nodeDiff = diffResult.changedHeapNodes[objId];
 
     if (objData.kind === "sequence") {
       nodes.push({
@@ -63,7 +76,8 @@ export function normalizeTraceToGraph(event: ITraceEvent | null): INormalizedCan
         position: { x: 550, y: heapY },
         data: {
           type: objData.type,
-          items: objData.value
+          items: objData.value,
+          highlightIndices: nodeDiff?.changedIndices || []
         }
       });
       heapY += 150;
@@ -73,7 +87,8 @@ export function normalizeTraceToGraph(event: ITraceEvent | null): INormalizedCan
         type: "dictNode",
         position: { x: 550, y: heapY },
         data: {
-          entries: objData.value
+          entries: objData.value,
+          highlightKeys: nodeDiff?.changedKeys || []
         }
       });
       heapY += 180;
@@ -85,7 +100,8 @@ export function normalizeTraceToGraph(event: ITraceEvent | null): INormalizedCan
         data: {
           className: objData.type,
           fields: objData.fields,
-          repr: objData.repr
+          repr: objData.repr,
+          highlightFields: nodeDiff?.changedFields || []
         }
       });
       heapY += 180;
@@ -100,5 +116,5 @@ export function normalizeTraceToGraph(event: ITraceEvent | null): INormalizedCan
     }
   });
 
-  return { nodes, edges };
+  return { nodes, edges, diffResult };
 }

@@ -9,12 +9,16 @@ import { customNodeTypes } from "@/components/renderers/RendererManager";
 
 interface VisualizerCanvasProps {
   currentStepEvent: ITraceEvent | null;
+  previousStepEvent?: ITraceEvent | null;
 }
 
-export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({ currentStepEvent }) => {
-  const { nodes, edges } = useMemo(() => {
-    return normalizeTraceToGraph(currentStepEvent);
-  }, [currentStepEvent]);
+export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
+  currentStepEvent,
+  previousStepEvent = null
+}) => {
+  const { nodes, edges, diffResult } = useMemo(() => {
+    return normalizeTraceToGraph(currentStepEvent, previousStepEvent);
+  }, [currentStepEvent, previousStepEvent]);
 
   return (
     <div className="h-full w-full bg-[#0b0e14] relative flex flex-col">

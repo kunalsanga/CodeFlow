@@ -21,6 +21,8 @@ export const ControlBar: React.FC = () => {
     resetTimeline
   } = usePlaybackStore();
 
+  const currentEvent = executionPayload?.trace?.[currentStepIndex];
+
   // Sync max steps when execution payload changes
   useEffect(() => {
     if (executionPayload && executionPayload.trace) {
@@ -89,20 +91,31 @@ export const ControlBar: React.FC = () => {
           </button>
         </div>
 
-        {/* Timeline Slider */}
-        <div className="flex-1 flex items-center gap-3">
-          <input
-            type="range"
-            min={0}
-            max={Math.max(0, maxSteps - 1)}
-            value={currentStepIndex}
-            onChange={(e) => setStep(Number(e.target.value))}
-            disabled={!maxSteps}
-            className="w-full accent-[#58a6ff] cursor-pointer disabled:opacity-40"
-          />
-          <span className="text-xs font-mono text-gray-400 min-w-[70px] text-right">
-            {maxSteps > 0 ? `${currentStepIndex + 1} / ${maxSteps}` : "0 / 0"}
-          </span>
+        {/* Timeline Slider with Step Metadata */}
+        <div className="flex-1 flex flex-col gap-1">
+          <div className="flex items-center justify-between text-[11px] font-mono text-gray-300">
+            <span>
+              {currentEvent ? `Step ${currentStepIndex + 1} | Line ${currentEvent.line_number}` : "Step 0"}
+            </span>
+            <span className="text-[#79c0ff]">
+              {currentEvent ? currentEvent.event_type.toUpperCase() : ""}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={0}
+              max={Math.max(0, maxSteps - 1)}
+              value={currentStepIndex}
+              onChange={(e) => setStep(Number(e.target.value))}
+              disabled={!maxSteps}
+              className="w-full accent-[#58a6ff] cursor-pointer disabled:opacity-40"
+            />
+            <span className="text-xs font-mono text-gray-400 min-w-[70px] text-right">
+              {maxSteps > 0 ? `${currentStepIndex + 1} / ${maxSteps}` : "0 / 0"}
+            </span>
+          </div>
         </div>
       </div>
 

@@ -5,11 +5,13 @@ import { CodeEditor } from "@/components/editor/CodeEditor";
 import { VisualizerCanvas } from "@/components/visualizer/VisualizerCanvas";
 import { ControlBar } from "@/components/controls/ControlBar";
 import { AICompanionPanel } from "@/components/inspectors/AICompanionPanel";
+import { StepChangesPanel } from "@/components/inspectors/StepChangesPanel";
 import { VariableInspector } from "@/components/inspectors/VariableInspector";
 import { ConsoleOutput } from "@/components/inspectors/ConsoleOutput";
 import { useExecutionStore } from "@/store/useExecutionStore";
 import { usePlaybackStore } from "@/store/usePlaybackStore";
-import { Code2, Sparkles, BookOpen } from "lucide-react";
+import { computeFrameDiff } from "@/lib/frameDiffEngine";
+import { Code2, BookOpen } from "lucide-react";
 
 export default function Home() {
   const { code, setCode, executionPayload, error: executionError } = useExecutionStore();
@@ -19,6 +21,15 @@ export default function Home() {
     if (!executionPayload || !executionPayload.trace.length) return null;
     return executionPayload.trace[currentStepIndex] || null;
   }, [executionPayload, currentStepIndex]);
+
+  const previousStepEvent = useMemo(() => {
+    if (!executionPayload || currentStepIndex <= 0) return null;
+    return executionPayload.trace[currentStepIndex - 1] || null;
+  }, [executionPayload, currentStepIndex]);
+
+  const diffResult = useMemo(() => {
+    return computeFrameDiff(previousStepEvent, currentStepEvent);
+  }, [previousStepEvent, currentStepEvent]);
 
   const activeLineNumber = currentStepEvent?.line_number;
   const currentCodeSnippet = useMemo(() => {
@@ -39,7 +50,7 @@ export default function Home() {
             <h1 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
               CodeFlow <span className="text-xs font-semibold px-2 py-0.5 bg-blue-900/50 text-[#79c0ff] border border-blue-700/50 rounded-full">Python MVP</span>
             </h1>
-            <p className="text-[11px] text-gray-400">Interactive AI-Powered Code Execution & Data Structure Visualizer</p>
+            <p className="text-[11px] text-gray-400">Interactive Visual Execution & Visual Diff Engine</p>
           </div>
         </div>
 
@@ -78,11 +89,15 @@ export default function Home() {
 
         {/* Center Column: Visualizer Canvas (5 cols) */}
         <div className="col-span-5 h-full border-r border-[#30363d] overflow-hidden">
-          <VisualizerCanvas currentStepEvent={currentStepEvent} />
+          <VisualizerCanvas
+            currentStepEvent={currentStepEvent}
+            previousStepEvent={previousStepEvent}
+          />
         </div>
 
-        {/* Right Column: AI Companion & Inspectors (3 cols) */}
-        <div className="col-span-3 h-full bg-[#0d1117] p-4 flex flex-col gap-4 overflow-y-auto">
+        {/* Right Column: AI Companion, Step Changes & Inspectors (3 cols) */}
+        <div className="col-span-3 h-full bg-[#0d1117] p-4 flex flex-col gap-3 overflow-y-auto">
+          <StepChangesPanel diffResult={diffResult} />
           <AICompanionPanel
             currentStepEvent={currentStepEvent}
             codeSnippet={currentCodeSnippet}
