@@ -209,6 +209,32 @@ export function buildBSTSnapshotsFromTrace(trace: ITraceEvent[]): IBSTSnapshot[]
         description: `Attach node to parent`,
         payload: { insertVal: insertingVal }
       };
+    } else if (
+      funcName.includes("inorder") ||
+      funcName.includes("preorder") ||
+      funcName.includes("postorder") ||
+      funcName.includes("traverse") ||
+      funcName.includes("search") ||
+      funcName.includes("find")
+    ) {
+      // Tree traversal / search phase — highlight visited node
+      if (activeVisitId && nodes[activeVisitId]) {
+        const visitedVal = nodes[activeVisitId].val;
+        semanticEvent = {
+          stepIndex: idx,
+          type: "VISIT_NODE",
+          description: `${funcName}() → Visiting Node(${visitedVal})`,
+          payload: { nodeVal: visitedVal, nodeId: activeVisitId, phase: funcName }
+        };
+      } else {
+        // root is None (leaf null check)
+        semanticEvent = {
+          stepIndex: idx,
+          type: "STEP",
+          description: `${funcName}(None) → Base Case`,
+          payload: { phase: funcName }
+        };
+      }
     }
 
     // Fallback

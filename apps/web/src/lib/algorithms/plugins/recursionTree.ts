@@ -12,6 +12,26 @@ export const recursionTreeDetector: IAlgorithmDetector = {
     let recursiveFuncName = "";
     let isRecursive = false;
 
+    // Check if ANY heap object has tree-like fields (left/right).
+    // If so, this is a tree program — yield to the tree detector.
+    let hasTreeNodes = false;
+    for (const step of trace) {
+      for (const obj of Object.values(step.heap_objects)) {
+        if (obj.kind === "object" && obj.fields) {
+          const keys = Object.keys(obj.fields).map(k => k.toLowerCase());
+          if (keys.includes("left") || keys.includes("right")) {
+            hasTreeNodes = true;
+            break;
+          }
+        }
+      }
+      if (hasTreeNodes) break;
+    }
+
+    // If this program builds tree nodes, don't claim it as generic recursion.
+    // The tree detector will handle it with a proper tree visualization.
+    if (hasTreeNodes) return null;
+
     trace.forEach((step) => {
       const frames = step.stack_frames;
       if (frames.length > maxDepth) {
