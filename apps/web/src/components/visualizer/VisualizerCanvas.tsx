@@ -7,6 +7,7 @@ import { ITraceEvent } from "@/types/trace";
 import { normalizeTraceToGraph } from "@/lib/traceNormalizer";
 import { customNodeTypes } from "@/components/renderers/RendererManager";
 import { SortingHeroVisualizer } from "./SortingHeroVisualizer";
+import { BinarySearchHeroVisualizer } from "./BinarySearchHeroVisualizer";
 import { RecursionHeroVisualizer } from "./RecursionHeroVisualizer";
 import { VisualizationMode } from "@/lib/algorithms/types";
 import { Layers, Database } from "lucide-react";
@@ -29,6 +30,10 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   // Contextually render specialized algorithm visualizers
   if (mode === "SORTING_BUBBLE") {
     return <SortingHeroVisualizer currentEvent={currentStepEvent} />;
+  }
+
+  if (mode === "SEARCH_BINARY") {
+    return <BinarySearchHeroVisualizer currentEvent={currentStepEvent} />;
   }
 
   if (mode === "RECURSION_TREE" && currentStepEvent) {
