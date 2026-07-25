@@ -55,7 +55,9 @@ const StackFrameRendererComponent: React.FC<StackFrameRendererProps> = ({ data }
         ) : (
           Object.entries(locals).map(([varName, val]) => {
             const isChanged = Boolean(changedVars[varName]);
-            const valStr = val.kind === "primitive" ? String(val.value) : `0x${val.target}`;
+            const rawTarget = val.kind === "reference" ? val.target : "";
+            const cleanHex = rawTarget ? `0x${rawTarget.replace(/[^0-9a-fA-F]/g, "").slice(0, 4) || "101"}` : "";
+            const valStr = val.kind === "primitive" ? String(val.value) : cleanHex;
 
             return (
               <motion.div
