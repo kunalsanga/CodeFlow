@@ -1,44 +1,61 @@
 "use client";
 
 import React, { memo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ITraceEvent, IHeapObject } from "@/types/trace";
-import { GitFork, Sparkles } from "lucide-react";
+import { GitFork, Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
 import { springPhysics } from "@/lib/animation/motionPresets";
 
 interface TreeHeroVisualizerProps {
   currentEvent: ITraceEvent | null;
 }
 
+interface IBSTNode {
+  id: string;
+  val: number;
+  leftId?: string;
+  rightId?: string;
+}
+
 export const TreeHeroVisualizerComponent: React.FC<TreeHeroVisualizerProps> = ({ currentEvent }) => {
   if (!currentEvent) return null;
 
   const topFrame = currentEvent.stack_frames[currentEvent.stack_frames.length - 1];
-  const funcName = topFrame?.function_name || "insert";
   const locals = topFrame?.locals || {};
 
+  // Extract inserted value & root
+  const valueToInsert = locals["value"]?.kind === "primitive" ? Number(locals["value"].value) : null;
+  const rootVar = locals["root"];
+
   // Extract tree nodes from heap
-  const treeNodes: { id: string; val: string; leftTarget?: string; rightTarget?: string }[] = [];
+  const bstNodesMap: Record<string, IBSTNode> = {};
+  let rootId: string | null = null;
+
+  if (rootVar && rootVar.kind === "reference") {
+    rootId = rootVar.target;
+  }
 
   Object.entries(currentEvent.heap_objects).forEach(([objId, obj]: [string, IHeapObject]) => {
     if (obj.kind === "object" && obj.fields) {
       const keys = Object.keys(obj.fields).map(k => k.toLowerCase());
       if (keys.includes("left") || keys.includes("right")) {
         const valObj = obj.fields["val"] || obj.fields["value"] || obj.fields["key"] || obj.fields["data"];
-        const valStr = valObj ? (valObj.kind === "primitive" ? String(valObj.value) : "ref") : objId;
+        const numVal = valObj && valObj.kind === "primitive" ? Number(valObj.value) : 0;
 
         const leftObj = obj.fields["left"];
         const rightObj = obj.fields["right"];
 
-        treeNodes.push({
+        bstNodesMap[objId] = {
           id: objId,
-          val: valStr,
-          leftTarget: leftObj && leftObj.kind === "reference" ? leftObj.target : undefined,
-          rightTarget: rightObj && rightObj.kind === "reference" ? rightObj.target : undefined
-        });
+          val: numVal,
+          leftId: leftObj && leftObj.kind === "reference" ? leftObj.target : undefined,
+          rightId: rightObj && rightObj.kind === "reference" ? rightObj.target : undefined
+        };
       }
     }
   });
+
+  const nodeCount = Object.keys(bstNodesMap).length;
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center p-8 bg-[#0b0e14]">
@@ -46,16 +63,16 @@ export const TreeHeroVisualizerComponent: React.FC<TreeHeroVisualizerProps> = ({
       <div className="mb-4 flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/40">
         <GitFork className="w-4 h-4 text-emerald-400" />
         <span className="text-xs font-bold font-mono text-emerald-300 uppercase tracking-wider">
-          Binary Search Tree (BST) Visualizer Mode
+          Binary Search Tree (BST) Semantic Visualizer
         </span>
       </div>
 
       {/* Operation Status Card */}
       <div className="mb-6 bg-[#161b22]/90 border-2 border-emerald-500/60 rounded-xl p-3.5 shadow-2xl flex items-center gap-6 font-mono text-xs">
         <div className="flex items-center gap-2">
-          <span className="text-gray-400 font-semibold uppercase">Operation:</span>
+          <span className="text-gray-400 font-semibold uppercase">Active Insert:</span>
           <span className="font-extrabold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40 text-sm">
-            {funcName}()
+            {valueToInsert !== null ? `value = ${valueToInsert}` : "Traversing BST..."}
           </span>
         </div>
 
@@ -64,30 +81,60 @@ export const TreeHeroVisualizerComponent: React.FC<TreeHeroVisualizerProps> = ({
         <div className="flex items-center gap-2">
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
           <span className="text-gray-200 font-bold">
-            {treeNodes.length} BST node(s) allocated in heap memory
+            {nodeCount} Tree Node(s) Allocated | Hierarchical BST
           </span>
         </div>
       </div>
 
-      {/* Tree Nodes Display */}
-      {treeNodes.length === 0 ? (
-        <div className="text-gray-500 italic text-sm">Executing BST initialization...</div>
+      {/* Hierarchical Tree Nodes Canvas */}
+      {nodeCount === 0 ? (
+        <div className="text-gray-500 italic text-sm">Initializing BST root node...</div>
       ) : (
-        <div className="flex items-center justify-center gap-6 flex-wrap py-8 px-6 bg-[#161b22]/80 border-2 border-[#30363d] rounded-2xl shadow-2xl">
-          {treeNodes.map((node, idx) => (
-            <motion.div
-              key={`bst_hero_${node.id}_${idx}`}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={springPhysics}
-              className="bg-[#0d1117] border-2 border-emerald-500 rounded-2xl p-4 shadow-xl flex flex-col items-center gap-1 min-w-[100px]"
-            >
-              <div className="w-12 h-12 rounded-full bg-emerald-950 border-2 border-emerald-400 flex items-center justify-center font-mono font-extrabold text-emerald-200 text-lg shadow-inner">
-                {node.val}
-              </div>
-              <span className="text-[10px] font-mono text-gray-400 mt-1">Node 0x{node.id.slice(0, 4)}</span>
-            </motion.div>
-          ))}
+        <div className="flex flex-col items-center justify-center gap-8 py-8 px-10 bg-[#161b22]/80 border-2 border-[#30363d] rounded-2xl shadow-2xl min-w-[480px]">
+          <AnimatePresence mode="popLayout">
+            <div className="flex items-center justify-center gap-6 flex-wrap">
+              {Object.values(bstNodesMap).map((node, idx) => {
+                const isInsertingTarget = valueToInsert !== null && node.val === valueToInsert;
+
+                return (
+                  <motion.div
+                    key={`bst_semantic_node_${node.id}_${idx}`}
+                    layout
+                    initial={{ scale: 0.7, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1, y: isInsertingTarget ? -10 : 0 }}
+                    exit={{ scale: 0.7, opacity: 0 }}
+                    transition={springPhysics}
+                    className="flex flex-col items-center relative"
+                  >
+                    {/* BST Circular Node Block */}
+                    <div
+                      className={`w-16 h-16 rounded-full flex items-center justify-center font-mono font-extrabold text-xl shadow-2xl transition-all ${
+                        isInsertingTarget
+                          ? "bg-amber-600 text-white border-2 border-white ring-4 ring-amber-500/60 scale-110 shadow-amber-500/60"
+                          : "bg-emerald-950 text-emerald-200 border-2 border-emerald-400"
+                      }`}
+                    >
+                      {node.val}
+                    </div>
+
+                    {/* Left & Right Branch Indicator Badges */}
+                    <div className="flex items-center gap-2 mt-2 font-mono text-[10px] font-bold">
+                      {node.leftId && (
+                        <span className="flex items-center text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/40">
+                          <ArrowLeft className="w-2.5 h-2.5 mr-0.5" /> L
+                        </span>
+                      )}
+                      {node.rightId && (
+                        <span className="flex items-center text-cyan-400 bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                          R <ArrowRight className="w-2.5 h-2.5 ml-0.5" />
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </AnimatePresence>
         </div>
       )}
     </div>
