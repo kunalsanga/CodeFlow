@@ -2,10 +2,11 @@
 
 import React, { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
-import { Box, AlertOctagon } from "lucide-react";
+import { Box } from "lucide-react";
 import { IVariableValue } from "@/types/trace";
 
 interface ObjectRendererProps {
+  id: string;
   data: {
     className?: string;
     fields?: Record<string, IVariableValue>;
@@ -14,17 +15,18 @@ interface ObjectRendererProps {
   };
 }
 
-const ObjectRendererComponent: React.FC<ObjectRendererProps> = ({ data }) => {
+const ObjectRendererComponent: React.FC<ObjectRendererProps> = ({ id, data }) => {
   const className = data.className || "Object";
   const fields = data.fields || {};
   const fieldKeys = Object.keys(fields);
   const isGarbage = data.isGarbage || false;
+  const hexAddress = `0x${(300 + (id ? id.length * 4 : 1)).toString(16)}`;
 
   return (
     <div
-      className={`bg-[#161b22] border-2 rounded-xl p-3 shadow-2xl min-w-[240px] transition-all ${
+      className={`bg-[#161b22]/90 backdrop-blur-md border-2 rounded-xl p-3 shadow-2xl min-w-[240px] transition-all ${
         isGarbage
-          ? "border-dashed border-red-500/80 opacity-70 bg-red-950/20 ring-2 ring-red-500/30"
+          ? "border-dashed border-red-500/80 opacity-60 bg-red-950/20"
           : "border-purple-500/80"
       }`}
     >
@@ -38,12 +40,9 @@ const ObjectRendererComponent: React.FC<ObjectRendererProps> = ({ data }) => {
             class {className}
           </span>
         </div>
-
-        {isGarbage && (
-          <span className="text-[10px] bg-red-950 border border-red-500 text-red-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
-            <AlertOctagon className="w-3 h-3 text-red-400" /> Garbage
-          </span>
-        )}
+        <span className="text-[10px] bg-purple-950/80 text-purple-300 px-2 py-0.5 rounded font-mono border border-purple-500/30">
+          {hexAddress}
+        </span>
       </div>
 
       {/* Object Fields List */}

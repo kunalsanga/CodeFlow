@@ -25,13 +25,14 @@ import { detectorManager } from "@/lib/algorithms/detectorManager";
 import { generateExecutionStory } from "@/lib/learning/narrativeGenerator";
 import { generatePredictionQuestions } from "@/lib/learning/predictionEngine";
 
-import { Code2, BookOpen, HelpCircle, BookMarked } from "lucide-react";
+import { Code2, BookOpen, HelpCircle, BookMarked, SlidersHorizontal, Sparkles } from "lucide-react";
 
 export default function Home() {
   const { code, setCode, executionPayload, error: executionError } = useExecutionStore();
   const { currentStepIndex, stepNext } = usePlaybackStore();
 
   const [isPredictionMode, setIsPredictionMode] = useState<boolean>(false);
+  const [showAdvancedInspectors, setShowAdvancedInspectors] = useState<boolean>(false);
   const [activeConceptKey, setActiveConceptKey] = useState<"stack" | "heap" | null>(null);
 
   // Keyboard navigation shortcuts
@@ -51,7 +52,7 @@ export default function Home() {
     return computeFrameDiff(previousStepEvent, currentStepEvent);
   }, [previousStepEvent, currentStepEvent]);
 
-  // Memory & Garbage Collection Analysis
+  // Memory Analysis
   const memoryAnalysis = useMemo(() => {
     return analyzeMemoryLayout(currentStepEvent);
   }, [currentStepEvent]);
@@ -93,8 +94,8 @@ export default function Home() {
         onClose={() => setActiveConceptKey(null)}
       />
 
-      {/* Top Header Navigation */}
-      <header className="h-14 bg-[#161b22] border-b border-[#30363d] px-6 flex items-center justify-between shrink-0">
+      {/* Clean Minimalist Header Navigation */}
+      <header className="h-14 bg-[#161b22] border-b border-[#30363d] px-6 flex items-center justify-between shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
             <Code2 className="w-5 h-5 text-white" />
@@ -102,86 +103,85 @@ export default function Home() {
           <div>
             <h1 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
               CodeFlow <span className="text-xs font-semibold px-2 py-0.5 bg-blue-900/50 text-[#79c0ff] border border-blue-700/50 rounded-full">
-                {algorithmResult?.algorithmName || "Python MVP"}
+                {algorithmResult?.algorithmName || "Python Visualizer"}
               </span>
             </h1>
-            <p className="text-[11px] text-gray-400">Interactive CS Learning Platform & Memory Visualization Engine</p>
+            <p className="text-[11px] text-gray-400">Interactive Execution & Memory Visualizer</p>
           </div>
         </div>
 
-        {/* Learning Toggles & Concept Cards */}
+        {/* Action Controls & Preset Sample Buttons */}
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAdvancedInspectors(!showAdvancedInspectors)}
+            aria-label="Toggle Advanced Inspector Panels"
+            className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-all focus:outline-none focus:ring-2 focus:ring-[#58a6ff] ${
+              showAdvancedInspectors
+                ? "bg-blue-950/80 border-[#58a6ff] text-[#79c0ff] ring-2 ring-blue-500/30"
+                : "bg-[#21262d] border-[#30363d] text-gray-300 hover:text-white"
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[#58a6ff]" />
+            {showAdvancedInspectors ? "Hide Details" : "Show Details"}
+          </button>
+
+          <div className="h-4 w-px bg-[#30363d]" />
+
           <button
             onClick={() => setIsPredictionMode(!isPredictionMode)}
             aria-label="Toggle Prediction Mode"
             title="Toggle Prediction Mode (P)"
             className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isPredictionMode
-                ? "bg-indigo-950/80 border-indigo-500 text-[#79c0ff] ring-2 ring-indigo-500/40"
+                ? "bg-indigo-950/80 border-indigo-500 text-indigo-300 ring-2 ring-indigo-500/40"
                 : "bg-[#21262d] border-[#30363d] text-gray-300 hover:text-white"
             }`}
           >
             <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
-            Prediction Mode: {isPredictionMode ? "ON" : "OFF"}
+            Prediction: {isPredictionMode ? "ON" : "OFF"}
           </button>
 
           <div className="h-4 w-px bg-[#30363d]" />
 
-          <button
-            onClick={() => setActiveConceptKey("stack")}
-            aria-label="View Stack Memory Concept"
-            className="text-xs flex items-center gap-1 bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-[#58a6ff] text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
-          >
-            <BookMarked className="w-3.5 h-3.5 text-[#58a6ff]" /> Stack Concept
-          </button>
-
-          <button
-            onClick={() => setActiveConceptKey("heap")}
-            aria-label="View Heap Memory Concept"
-            className="text-xs flex items-center gap-1 bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
-          >
-            <BookMarked className="w-3.5 h-3.5 text-emerald-400" /> Heap Concept
-          </button>
-        </div>
-
-        {/* Preset Code Templates */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400 flex items-center gap-1">
-            <BookOpen className="w-3.5 h-3.5" /> Samples:
-          </span>
-          <button
-            onClick={() => setCode(`def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n\nresult = fibonacci(3)\nprint("Fibonacci:", result)`)}
-            aria-label="Load Fibonacci Recursion Sample"
-            className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
-          >
-            Recursion
-          </button>
-          <button
-            onClick={() => setCode(`numbers = [5, 2, 8, 1, 3]\nfor i in range(len(numbers)):\n    for j in range(0, len(numbers) - i - 1):\n        if numbers[j] > numbers[j + 1]:\n            numbers[j], numbers[j + 1] = numbers[j + 1], numbers[j]\nprint("Sorted:", numbers)`)}
-            aria-label="Load Bubble Sort Sample"
-            className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
-          >
-            Bubble Sort
-          </button>
-          <button
-            onClick={() => setCode(`a = [10, 20, 30]\nb = a\nb.append(40)\nprint("Aliased list:", a)`)}
-            aria-label="Load Reference Aliasing Sample"
-            className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
-          >
-            Aliasing & Heap Ref
-          </button>
+          {/* Preset Sample Code Buttons */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <BookOpen className="w-3.5 h-3.5" /> Samples:
+            </span>
+            <button
+              onClick={() => setCode(`def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n\nresult = fibonacci(3)\nprint("Fibonacci:", result)`)}
+              aria-label="Load Fibonacci Recursion Sample"
+              className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+            >
+              Recursion
+            </button>
+            <button
+              onClick={() => setCode(`numbers = [5, 2, 8, 1, 3]\nfor i in range(len(numbers)):\n    for j in range(0, len(numbers) - i - 1):\n        if numbers[j] > numbers[j + 1]:\n            numbers[j], numbers[j + 1] = numbers[j + 1], numbers[j]\nprint("Sorted:", numbers)`)}
+              aria-label="Load Bubble Sort Sample"
+              className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+            >
+              Bubble Sort
+            </button>
+            <button
+              onClick={() => setCode(`a = [10, 20, 30]\nb = a\nb.append(40)\nprint("Aliased list:", a)`)}
+              aria-label="Load Reference Aliasing Sample"
+              className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+            >
+              Aliasing (Heap RAM)
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Workspace Split View */}
       <main className="flex-1 grid grid-cols-12 overflow-hidden">
-        {/* Left Column: Monaco Code Editor (4 cols) */}
-        <div className="col-span-4 h-full border-r border-[#30363d] overflow-hidden">
+        {/* Left Column: Code Editor (5 cols in default mode, 4 in detail mode) */}
+        <div className={`${showAdvancedInspectors ? "col-span-4" : "col-span-5"} h-full border-r border-[#30363d] overflow-hidden transition-all`}>
           <CodeEditor activeLineNumber={activeLineNumber} />
         </div>
 
-        {/* Center Column: Visualizer Canvas (5 cols) */}
-        <div className="col-span-5 h-full border-r border-[#30363d] overflow-hidden relative">
+        {/* Center Column: Visualizer Canvas (7 cols in default mode, 5 in detail mode) */}
+        <div className={`${showAdvancedInspectors ? "col-span-5" : "col-span-7"} h-full border-r border-[#30363d] overflow-hidden relative transition-all`}>
           <VisualizerCanvas
             currentStepEvent={currentStepEvent}
             previousStepEvent={previousStepEvent}
@@ -198,25 +198,27 @@ export default function Home() {
           )}
         </div>
 
-        {/* Right Column: Memory Insights, Narrative, AI Companion & Inspectors (3 cols) */}
-        <div className="col-span-3 h-full bg-[#0d1117] p-4 flex flex-col gap-3 overflow-y-auto">
-          <MemoryInsightsPanel memoryAnalysis={memoryAnalysis} />
-          <ExecutionStoryPanel
-            storySteps={storySteps}
-            currentStepIndex={currentStepIndex}
-          />
-          <AlgorithmMetadataPanel algorithmResult={algorithmResult} />
-          <StepChangesPanel diffResult={diffResult} />
-          <AICompanionPanel
-            currentStepEvent={currentStepEvent}
-            codeSnippet={currentCodeSnippet}
-          />
-          <VariableInspector currentStepEvent={currentStepEvent} />
-          <ConsoleOutput
-            stdout={executionPayload?.stdout || currentStepEvent?.stdout || ""}
-            error={executionError || executionPayload?.error}
-          />
-        </div>
+        {/* Right Column: Detail Inspectors (Only visible when toggled) */}
+        {showAdvancedInspectors && (
+          <div className="col-span-3 h-full bg-[#0d1117] p-4 flex flex-col gap-3 overflow-y-auto border-l border-[#30363d]">
+            <MemoryInsightsPanel memoryAnalysis={memoryAnalysis} />
+            <ExecutionStoryPanel
+              storySteps={storySteps}
+              currentStepIndex={currentStepIndex}
+            />
+            <AlgorithmMetadataPanel algorithmResult={algorithmResult} />
+            <StepChangesPanel diffResult={diffResult} />
+            <AICompanionPanel
+              currentStepEvent={currentStepEvent}
+              codeSnippet={currentCodeSnippet}
+            />
+            <VariableInspector currentStepEvent={currentStepEvent} />
+            <ConsoleOutput
+              stdout={executionPayload?.stdout || currentStepEvent?.stdout || ""}
+              error={executionError || executionPayload?.error}
+            />
+          </div>
+        )}
       </main>
 
       {/* Bottom Timeline & Control Bar */}

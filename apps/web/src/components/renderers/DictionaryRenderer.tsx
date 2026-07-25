@@ -3,10 +3,11 @@
 import React, { useState, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Handle, Position } from "@xyflow/react";
-import { ChevronDown, ChevronRight, KeyRound, AlertOctagon } from "lucide-react";
+import { ChevronDown, ChevronRight, KeyRound } from "lucide-react";
 import { IVariableValue } from "@/types/trace";
 
 interface DictionaryRendererProps {
+  id: string;
   data: {
     label?: string;
     entries?: Record<string, IVariableValue>;
@@ -14,23 +15,24 @@ interface DictionaryRendererProps {
   };
 }
 
-const DictionaryRendererComponent: React.FC<DictionaryRendererProps> = ({ data }) => {
+const DictionaryRendererComponent: React.FC<DictionaryRendererProps> = ({ id, data }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const entries = data.entries || {};
   const entryKeys = Object.keys(entries);
   const isGarbage = data.isGarbage || false;
+  const hexAddress = `0x${(200 + (id ? id.length * 5 : 1)).toString(16)}`;
 
   return (
     <div
-      className={`bg-[#161b22] border-2 rounded-xl p-3 shadow-2xl min-w-[260px] transition-all ${
+      className={`bg-[#161b22]/90 backdrop-blur-md border-2 rounded-xl p-3 shadow-2xl min-w-[260px] transition-all ${
         isGarbage
-          ? "border-dashed border-red-500/80 opacity-70 bg-red-950/20 ring-2 ring-red-500/30"
+          ? "border-dashed border-red-500/80 opacity-60 bg-red-950/20"
           : "border-emerald-500/80"
       }`}
     >
       <Handle type="target" position={Position.Left} className="w-3 h-3 bg-emerald-400" />
 
-      {/* Header */}
+      {/* Header with RAM address */}
       <div className="flex items-center justify-between border-b border-[#30363d] pb-2 mb-2">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -40,16 +42,14 @@ const DictionaryRendererComponent: React.FC<DictionaryRendererProps> = ({ data }
           {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           <KeyRound className="w-3.5 h-3.5" />
           <span>dict</span>
+          <span className="text-[10px] bg-emerald-950/80 text-emerald-300 px-1.5 py-0.5 rounded font-mono border border-emerald-500/30 ml-1">
+            {hexAddress}
+          </span>
         </button>
-        <span className="text-[10px] bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded-full font-mono">
+
+        <span className="text-[10px] text-gray-400 font-mono">
           {entryKeys.length} keys
         </span>
-
-        {isGarbage && (
-          <span className="text-[10px] bg-red-950 border border-red-500 text-red-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
-            <AlertOctagon className="w-3 h-3 text-red-400" /> Garbage
-          </span>
-        )}
       </div>
 
       {/* Key-Value Card Body */}
