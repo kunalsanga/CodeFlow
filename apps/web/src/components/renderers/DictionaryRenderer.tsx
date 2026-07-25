@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Handle, Position } from "@xyflow/react";
 import { ChevronDown, ChevronRight, KeyRound } from "lucide-react";
@@ -13,7 +13,7 @@ interface DictionaryRendererProps {
   };
 }
 
-export const DictionaryRenderer: React.FC<DictionaryRendererProps> = ({ data }) => {
+const DictionaryRendererComponent: React.FC<DictionaryRendererProps> = ({ data }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const entries = data.entries || {};
   const entryKeys = Object.keys(entries);
@@ -26,7 +26,8 @@ export const DictionaryRenderer: React.FC<DictionaryRendererProps> = ({ data }) 
       <div className="flex items-center justify-between border-b border-[#30363d] pb-2 mb-2">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+          className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded"
+          aria-label="Toggle dictionary expansion"
         >
           {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           <KeyRound className="w-3.5 h-3.5" />
@@ -77,3 +78,5 @@ export const DictionaryRenderer: React.FC<DictionaryRendererProps> = ({ data }) 
     </div>
   );
 };
+
+export const DictionaryRenderer = memo(DictionaryRendererComponent);

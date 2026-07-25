@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { Box } from "lucide-react";
 import { IVariableValue } from "@/types/trace";
@@ -13,7 +13,7 @@ interface ObjectRendererProps {
   };
 }
 
-export const ObjectRenderer: React.FC<ObjectRendererProps> = ({ data }) => {
+const ObjectRendererComponent: React.FC<ObjectRendererProps> = ({ data }) => {
   const className = data.className || "Object";
   const fields = data.fields || {};
   const fieldKeys = Object.keys(fields);
@@ -60,3 +60,5 @@ export const ObjectRenderer: React.FC<ObjectRendererProps> = ({ data }) => {
     </div>
   );
 };
+
+export const ObjectRenderer = memo(ObjectRendererComponent);

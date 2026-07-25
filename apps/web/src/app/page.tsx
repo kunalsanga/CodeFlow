@@ -16,6 +16,8 @@ import { ConceptCardModal } from "@/components/learning/ConceptCardModal";
 
 import { useExecutionStore } from "@/store/useExecutionStore";
 import { usePlaybackStore } from "@/store/usePlaybackStore";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+
 import { computeFrameDiff } from "@/lib/frameDiffEngine";
 import { detectorManager } from "@/lib/algorithms/detectorManager";
 import { generateExecutionStory } from "@/lib/learning/narrativeGenerator";
@@ -29,6 +31,9 @@ export default function Home() {
 
   const [isPredictionMode, setIsPredictionMode] = useState<boolean>(false);
   const [activeConceptKey, setActiveConceptKey] = useState<"stack" | "heap" | null>(null);
+
+  // Keyboard navigation shortcuts
+  useKeyboardShortcuts(() => setIsPredictionMode(prev => !prev));
 
   const currentStepEvent = useMemo(() => {
     if (!executionPayload || !executionPayload.trace.length) return null;
@@ -101,7 +106,9 @@ export default function Home() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsPredictionMode(!isPredictionMode)}
-            className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-all ${
+            aria-label="Toggle Prediction Mode"
+            title="Toggle Prediction Mode (P)"
+            className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               isPredictionMode
                 ? "bg-indigo-950/80 border-indigo-500 text-indigo-300 ring-2 ring-indigo-500/40"
                 : "bg-[#21262d] border-[#30363d] text-gray-300 hover:text-white"
@@ -115,14 +122,16 @@ export default function Home() {
 
           <button
             onClick={() => setActiveConceptKey("stack")}
-            className="text-xs flex items-center gap-1 bg-[#21262d] hover:bg-[#30363d] text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+            aria-label="View Stack Memory Concept"
+            className="text-xs flex items-center gap-1 bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-[#58a6ff] text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
           >
             <BookMarked className="w-3.5 h-3.5 text-[#58a6ff]" /> Stack Concept
           </button>
 
           <button
             onClick={() => setActiveConceptKey("heap")}
-            className="text-xs flex items-center gap-1 bg-[#21262d] hover:bg-[#30363d] text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+            aria-label="View Heap Memory Concept"
+            className="text-xs flex items-center gap-1 bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
           >
             <BookMarked className="w-3.5 h-3.5 text-emerald-400" /> Heap Concept
           </button>
@@ -135,15 +144,24 @@ export default function Home() {
           </span>
           <button
             onClick={() => setCode(`def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n\nresult = fibonacci(3)\nprint("Fibonacci:", result)`)}
-            className="text-xs bg-[#21262d] hover:bg-[#30363d] text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+            aria-label="Load Fibonacci Recursion Sample"
+            className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
           >
             Recursion
           </button>
           <button
             onClick={() => setCode(`numbers = [5, 2, 8, 1, 3]\nfor i in range(len(numbers)):\n    for j in range(0, len(numbers) - i - 1):\n        if numbers[j] > numbers[j + 1]:\n            numbers[j], numbers[j + 1] = numbers[j + 1], numbers[j]\nprint("Sorted:", numbers)`)}
-            className="text-xs bg-[#21262d] hover:bg-[#30363d] text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+            aria-label="Load Bubble Sort Sample"
+            className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
           >
             Bubble Sort
+          </button>
+          <button
+            onClick={() => setCode(`def binary_search(arr, target):\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1\n\nidx = binary_search([1, 3, 5, 7, 9], 7)\nprint("Target at:", idx)`)}
+            aria-label="Load Binary Search Sample"
+            className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+          >
+            Binary Search
           </button>
         </div>
       </header>

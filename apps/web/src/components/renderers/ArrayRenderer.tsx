@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Handle, Position } from "@xyflow/react";
 import { IVariableValue } from "@/types/trace";
@@ -14,14 +14,14 @@ interface ArrayRendererProps {
   };
 }
 
-export const ArrayRenderer: React.FC<ArrayRendererProps> = ({ data }) => {
+const ArrayRendererComponent: React.FC<ArrayRendererProps> = ({ data }) => {
   const items = data.items || [];
   const highlightIndices = data.highlightIndices || [];
 
   return (
     <div className="bg-[#161b22] border-2 border-[#388bfd] rounded-xl p-3 shadow-2xl min-w-[280px]">
       <Handle type="target" position={Position.Left} className="w-3 h-3 bg-[#58a6ff]" />
-      
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#30363d] pb-2 mb-3">
         <div className="flex items-center gap-2">
@@ -82,3 +82,5 @@ export const ArrayRenderer: React.FC<ArrayRendererProps> = ({ data }) => {
     </div>
   );
 };
+
+export const ArrayRenderer = memo(ArrayRendererComponent);

@@ -48,7 +48,8 @@ export const ControlBar: React.FC = () => {
       <button
         onClick={executeCode}
         disabled={isExecuting}
-        className="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white font-medium text-sm px-4 py-2 rounded-md transition-colors shadow-sm"
+        aria-label="Visualize Code Execution"
+        className="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 text-white font-medium text-sm px-4 py-2 rounded-md transition-colors shadow-sm"
       >
         <PlayCircle className="w-4 h-4" />
         {isExecuting ? "Executing..." : "Visualize Execution"}
@@ -60,32 +61,36 @@ export const ControlBar: React.FC = () => {
           <button
             onClick={resetTimeline}
             disabled={!maxSteps}
-            title="Reset Timeline"
-            className="p-1.5 text-gray-300 hover:text-white hover:bg-[#21262d] rounded disabled:opacity-40"
+            title="Reset Timeline (R)"
+            aria-label="Reset Timeline"
+            className="p-1.5 text-gray-300 hover:text-white hover:bg-[#21262d] focus:outline-none focus:ring-2 focus:ring-[#58a6ff] rounded disabled:opacity-40"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
           <button
             onClick={stepPrev}
             disabled={!maxSteps || currentStepIndex === 0}
-            title="Previous Step"
-            className="p-1.5 text-gray-300 hover:text-white hover:bg-[#21262d] rounded disabled:opacity-40"
+            title="Previous Step (Left Arrow)"
+            aria-label="Previous Step"
+            className="p-1.5 text-gray-300 hover:text-white hover:bg-[#21262d] focus:outline-none focus:ring-2 focus:ring-[#58a6ff] rounded disabled:opacity-40"
           >
             <SkipBack className="w-4 h-4" />
           </button>
           <button
             onClick={togglePlayPause}
             disabled={!maxSteps}
-            title={isPlaying ? "Pause" : "Play"}
-            className="p-2 bg-[#1f6feb] hover:bg-[#388bfd] text-white rounded-full disabled:opacity-40"
+            title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+            aria-label={isPlaying ? "Pause Execution" : "Play Execution"}
+            className="p-2 bg-[#1f6feb] hover:bg-[#388bfd] focus:outline-none focus:ring-2 focus:ring-blue-400 text-white rounded-full disabled:opacity-40"
           >
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
           </button>
           <button
             onClick={stepNext}
             disabled={!maxSteps || currentStepIndex >= maxSteps - 1}
-            title="Next Step"
-            className="p-1.5 text-gray-300 hover:text-white hover:bg-[#21262d] rounded disabled:opacity-40"
+            title="Next Step (Right Arrow)"
+            aria-label="Next Step"
+            className="p-1.5 text-gray-300 hover:text-white hover:bg-[#21262d] focus:outline-none focus:ring-2 focus:ring-[#58a6ff] rounded disabled:opacity-40"
           >
             <SkipForward className="w-4 h-4" />
           </button>
@@ -110,7 +115,8 @@ export const ControlBar: React.FC = () => {
               value={currentStepIndex}
               onChange={(e) => setStep(Number(e.target.value))}
               disabled={!maxSteps}
-              className="w-full accent-[#58a6ff] cursor-pointer disabled:opacity-40"
+              aria-label="Timeline Scrubber Slider"
+              className="w-full accent-[#58a6ff] cursor-pointer disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[#58a6ff] rounded"
             />
             <span className="text-xs font-mono text-gray-400 min-w-[70px] text-right">
               {maxSteps > 0 ? `${currentStepIndex + 1} / ${maxSteps}` : "0 / 0"}
@@ -121,11 +127,13 @@ export const ControlBar: React.FC = () => {
 
       {/* Right: Speed Control Selector */}
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-400">Speed:</span>
+        <label htmlFor="playback-speed-select" className="text-xs text-gray-400">Speed:</label>
         <select
+          id="playback-speed-select"
           value={playbackSpeed}
           onChange={(e) => setSpeed(Number(e.target.value))}
-          className="bg-[#21262d] text-gray-200 border border-[#30363d] text-xs rounded px-2 py-1 focus:outline-none focus:border-[#58a6ff]"
+          aria-label="Select Playback Speed"
+          className="bg-[#21262d] text-gray-200 border border-[#30363d] text-xs rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#58a6ff]"
         >
           <option value={0.25}>0.25x</option>
           <option value={0.5}>0.5x</option>

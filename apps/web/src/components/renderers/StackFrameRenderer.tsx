@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { motion } from "framer-motion";
 import { Handle, Position } from "@xyflow/react";
 import { Layers } from "lucide-react";
@@ -15,7 +15,7 @@ interface StackFrameRendererProps {
   };
 }
 
-export const StackFrameRenderer: React.FC<StackFrameRendererProps> = ({ data }) => {
+const StackFrameRendererComponent: React.FC<StackFrameRendererProps> = ({ data }) => {
   const funcName = data.function_name || "<module>";
   const lineNo = data.line_number || 1;
   const locals = data.locals || {};
@@ -73,3 +73,5 @@ export const StackFrameRenderer: React.FC<StackFrameRendererProps> = ({ data }) 
     </motion.div>
   );
 };
+
+export const StackFrameRenderer = memo(StackFrameRendererComponent);
