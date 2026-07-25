@@ -3,8 +3,9 @@
 import React, { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ITraceEvent, IHeapObject } from "@/types/trace";
-import { GitFork, Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
+import { GitFork, Sparkles, ArrowLeft, ArrowRight, Activity } from "lucide-react";
 import { springPhysics } from "@/lib/animation/motionPresets";
+import { generateSemanticEventStream } from "@/lib/events/semanticEventEngine";
 
 interface TreeHeroVisualizerProps {
   currentEvent: ITraceEvent | null;
@@ -21,19 +22,14 @@ export const TreeHeroVisualizerComponent: React.FC<TreeHeroVisualizerProps> = ({
   if (!currentEvent) return null;
 
   const topFrame = currentEvent.stack_frames[currentEvent.stack_frames.length - 1];
+  const funcName = topFrame?.function_name || "insert";
   const locals = topFrame?.locals || {};
 
   // Extract inserted value & root
   const valueToInsert = locals["value"]?.kind === "primitive" ? Number(locals["value"].value) : null;
-  const rootVar = locals["root"];
 
   // Extract tree nodes from heap
   const bstNodesMap: Record<string, IBSTNode> = {};
-  let rootId: string | null = null;
-
-  if (rootVar && rootVar.kind === "reference") {
-    rootId = rootVar.target;
-  }
 
   Object.entries(currentEvent.heap_objects).forEach(([objId, obj]: [string, IHeapObject]) => {
     if (obj.kind === "object" && obj.fields) {
@@ -56,6 +52,8 @@ export const TreeHeroVisualizerComponent: React.FC<TreeHeroVisualizerProps> = ({
   });
 
   const nodeCount = Object.keys(bstNodesMap).length;
+  const semanticEvents = generateSemanticEventStream([currentEvent]);
+  const activeSemanticEvent = semanticEvents[0];
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center p-8 bg-[#0b0e14]">
@@ -63,16 +61,17 @@ export const TreeHeroVisualizerComponent: React.FC<TreeHeroVisualizerProps> = ({
       <div className="mb-4 flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/40">
         <GitFork className="w-4 h-4 text-emerald-400" />
         <span className="text-xs font-bold font-mono text-emerald-300 uppercase tracking-wider">
-          Binary Search Tree (BST) Semantic Visualizer
+          BST Semantic Event Stream Visualizer
         </span>
       </div>
 
-      {/* Operation Status Card */}
+      {/* Semantic Event Operation Status Card */}
       <div className="mb-6 bg-[#161b22]/90 border-2 border-emerald-500/60 rounded-xl p-3.5 shadow-2xl flex items-center gap-6 font-mono text-xs">
         <div className="flex items-center gap-2">
-          <span className="text-gray-400 font-semibold uppercase">Active Insert:</span>
-          <span className="font-extrabold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40 text-sm">
-            {valueToInsert !== null ? `value = ${valueToInsert}` : "Traversing BST..."}
+          <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
+          <span className="text-gray-400 font-semibold uppercase">Semantic Event:</span>
+          <span className="font-extrabold text-emerald-300 bg-emerald-950/80 px-2.5 py-1 rounded border border-emerald-500/40 text-sm">
+            {activeSemanticEvent ? activeSemanticEvent.description : `${funcName}(val=${valueToInsert !== null ? valueToInsert : "?"})`}
           </span>
         </div>
 
@@ -81,14 +80,14 @@ export const TreeHeroVisualizerComponent: React.FC<TreeHeroVisualizerProps> = ({
         <div className="flex items-center gap-2">
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
           <span className="text-gray-200 font-bold">
-            {nodeCount} Tree Node(s) Allocated | Hierarchical BST
+            {nodeCount} Tree Node(s) Allocated
           </span>
         </div>
       </div>
 
       {/* Hierarchical Tree Nodes Canvas */}
       {nodeCount === 0 ? (
-        <div className="text-gray-500 italic text-sm">Initializing BST root node...</div>
+        <div className="text-gray-500 italic text-sm">Executing BST initialization...</div>
       ) : (
         <div className="flex flex-col items-center justify-center gap-8 py-8 px-10 bg-[#161b22]/80 border-2 border-[#30363d] rounded-2xl shadow-2xl min-w-[480px]">
           <AnimatePresence mode="popLayout">
