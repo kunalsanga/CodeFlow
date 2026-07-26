@@ -3,7 +3,6 @@
 import React from 'react';
 import { ISemanticIR } from '@/types/semantic/ir';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CodeFlowSprings } from '@codeflow/animation-engine';
 
 interface LinkedListProps {
   semanticIR: ISemanticIR;
@@ -31,119 +30,91 @@ export const LinkedListRenderer: React.FC<LinkedListProps> = ({ semanticIR }) =>
   const currentState = listStates[stateIndex] || listStates[0];
 
   return (
-    <div key={`linked-list-step-${currentStep}`} className="flex flex-col gap-6 p-6 bg-[#161b22] text-[#e6edf3] rounded-xl border border-[#30363d] shadow-2xl w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#30363d] pb-4">
+    <div key={`linked-list-step-${currentStep}`} className="h-full w-full flex flex-col justify-between p-8 bg-[#3f51b5] text-white font-sans overflow-y-auto">
+      {/* Flat Vector Header */}
+      <div className="flex items-center justify-between border-b-2 border-white/20 pb-4">
         <div>
-          <span className="bg-[#3fb950]/20 text-[#3fb950] text-xs font-semibold px-3 py-1 rounded-full border border-[#3fb950]/30 uppercase tracking-wider">
-            Semantic Visualizer (98% Confidence)
+          <span className="bg-white text-[#3f51b5] text-xs font-black px-3 py-1 rounded uppercase tracking-wider">
+            Singly Linked List
           </span>
-          <h2 className="text-2xl font-bold mt-1 text-white">Singly Linked List Structure</h2>
+          <h2 className="text-2xl font-black mt-2 text-white">Pointer Chaining & Reversal</h2>
         </div>
-        <div className="text-right font-mono text-xs text-[#8b949e]">
-          <div>Active Operation: <span className="text-[#58a6ff] font-bold">{currentState.op}</span></div>
-          <div>Step Position: <span className="text-[#3fb950] font-bold">{currentStep + 1} / {semanticIR.metadata.totalSteps || listStates.length}</span></div>
+        <div className="text-right font-mono text-xs text-white/90">
+          <div>Operation: <span className="text-yellow-300 font-bold">{currentState.op}</span></div>
+          <div>Step: <span className="text-emerald-300 font-bold">{currentStep + 1} / {semanticIR.metadata.totalSteps || listStates.length}</span></div>
         </div>
       </div>
 
-      {/* Dynamic Linked List Node Chain with VALUE | NEXT Sections & Colored Reversal Pointers */}
-      <div className="bg-[#0d1117] p-8 rounded-xl border border-[#30363d] flex flex-col items-center gap-6 min-h-[250px] justify-center overflow-x-auto relative shadow-inner">
-        <div className="flex items-center justify-between w-full">
-          <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">
-            Node Memory Pointers & Active Pointers (Step {currentStep + 1})
-          </h3>
-          {/* Active Pointer Legend */}
-          <div className="flex gap-3 text-xs font-mono">
-            <span className="flex items-center gap-1 text-[#f85149] font-bold">🔴 prev</span>
-            <span className="flex items-center gap-1 text-[#d29922] font-bold">🟡 curr</span>
-            <span className="flex items-center gap-1 text-[#58a6ff] font-bold">🔵 next</span>
+      {/* Flat Vector Diagram Area */}
+      <div className="my-auto py-12 flex flex-col items-center gap-8 min-h-[300px] justify-center overflow-x-auto">
+        <div className="flex items-center gap-6">
+          {/* Head Indicator Badge */}
+          <div className="bg-emerald-400 text-[#0d1117] font-black text-xs px-3 py-2 rounded-lg shadow-md font-mono uppercase">
+            HEAD ➔
           </div>
-        </div>
 
-        <div className="flex items-center gap-4 my-4">
           <AnimatePresence mode="popLayout">
             {currentState.nodes.map((val, idx) => {
-              const isHead = idx === 0;
-              const isTail = idx === currentState.nodes.length - 1;
-
-              const isPrev = currentState.pointers.prev === val;
               const isCurr = currentState.pointers.curr === val;
+              const isPrev = currentState.pointers.prev === val;
               const isNext = currentState.pointers.next === val;
 
               return (
                 <React.Fragment key={`${val}-${idx}-${currentStep}`}>
                   <motion.div
                     layout
-                    initial={{ scale: 0.7, opacity: 0, y: 20 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.7, opacity: 0, y: -20 }}
-                    transition={CodeFlowSprings.nodeDropIn}
-                    className={`rounded-xl flex flex-col items-center border-2 font-mono relative overflow-hidden shadow-lg ${
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    className={`bg-white text-[#0d1117] rounded-xl border-4 font-mono relative overflow-hidden shadow-2xl flex items-center divide-x-2 divide-gray-300 ${
                       isCurr
-                        ? 'bg-[#d29922]/20 border-[#d29922] text-[#d29922] ring-4 ring-[#d29922]/30'
+                        ? 'border-yellow-400 ring-4 ring-yellow-300'
                         : isPrev
-                        ? 'bg-[#f85149]/20 border-[#f85149] text-[#f85149]'
+                        ? 'border-rose-400'
                         : isNext
-                        ? 'bg-[#58a6ff]/20 border-[#58a6ff] text-[#79c0ff]'
-                        : isHead
-                        ? 'bg-[#3fb950]/20 border-[#3fb950] text-[#3fb950]'
-                        : isTail
-                        ? 'bg-purple-950/80 border-purple-500 text-purple-200'
-                        : 'bg-[#161b22] border-[#30363d] text-[#e6edf3]'
+                        ? 'border-cyan-400'
+                        : 'border-white'
                     }`}
                   >
-                    {/* Floating Pointer Badges */}
-                    <div className="absolute -top-6 left-0 right-0 flex justify-center gap-1 text-[10px] font-bold">
-                      {isPrev && <span className="bg-[#f85149] text-white px-1.5 py-0.5 rounded shadow">PREV</span>}
-                      {isCurr && <span className="bg-[#d29922] text-black px-1.5 py-0.5 rounded shadow">CURR</span>}
-                      {isNext && <span className="bg-[#58a6ff] text-[#0d1117] px-1.5 py-0.5 rounded shadow">NEXT</span>}
+                    {/* Floating Active Pointer Badges */}
+                    <div className="absolute -top-7 left-0 right-0 flex justify-center gap-1 text-[10px] font-black">
+                      {isPrev && <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded shadow">PREV</span>}
+                      {isCurr && <span className="bg-yellow-400 text-black px-1.5 py-0.5 rounded shadow">CURR</span>}
+                      {isNext && <span className="bg-cyan-400 text-black px-1.5 py-0.5 rounded shadow">NEXT</span>}
                     </div>
 
-                    <div className="px-3 py-1 bg-[#161b22] border-b border-[#30363d] w-full text-center text-[10px] uppercase font-bold tracking-wider opacity-75">
-                      {isHead ? 'HEAD' : isTail ? 'TAIL' : `NODE [${idx}]`}
+                    {/* VALUE SECTION */}
+                    <div className="px-5 py-4 flex flex-col items-center bg-gray-50">
+                      <span className="text-[10px] text-gray-500 font-black uppercase">VAL</span>
+                      <span className="text-2xl font-black">{val}</span>
                     </div>
 
-                    {/* VALUE | NEXT Sections */}
-                    <div className="flex items-center divide-x divide-[#30363d] p-3 gap-2">
-                      <div className="flex flex-col items-center px-2">
-                        <span className="text-[9px] text-[#8b949e] uppercase font-bold">VAL</span>
-                        <span className="text-xl font-bold">{val}</span>
-                      </div>
-                      <div className="flex flex-col items-center px-2">
-                        <span className="text-[9px] text-[#8b949e] uppercase font-bold">NEXT</span>
-                        <span className="text-xs text-[#58a6ff] font-bold">0x{val * 4}</span>
-                      </div>
+                    {/* NEXT POINTER SECTION */}
+                    <div className="px-4 py-4 flex flex-col items-center bg-white">
+                      <span className="text-[10px] text-gray-500 font-black uppercase">NEXT</span>
+                      <span className="text-xs font-black text-[#3f51b5]">0x{val * 8}</span>
                     </div>
                   </motion.div>
 
-                  {/* Pointer Arrow */}
-                  <motion.span
-                    layout
-                    transition={CodeFlowSprings.pointerReconnect}
-                    className="text-[#3fb950] text-xl font-bold px-1 select-none"
-                  >
+                  {/* Thick Solid White Vector Pointer Arrow */}
+                  <motion.div layout className="flex items-center text-white text-2xl font-black px-1 select-none">
                     ➔
-                  </motion.span>
+                  </motion.div>
                 </React.Fragment>
               );
             })}
           </AnimatePresence>
 
-          {/* Dashed ∅ NULL Terminator */}
-          <div className="p-3 bg-[#f85149]/10 border-2 border-dashed border-[#f85149]/60 rounded-xl text-[#f85149] font-mono font-bold text-sm flex items-center gap-1 select-none shadow-sm">
-            <span className="text-lg">∅</span> NULL
+          {/* Solid White Null Terminator Node */}
+          <div className="bg-white/20 border-4 border-dashed border-white text-white font-mono font-black text-sm px-4 py-4 rounded-xl flex items-center gap-2 select-none shadow-md">
+            <span className="text-xl">∅</span> NULL
           </div>
         </div>
       </div>
 
-      {/* Classifier Evidence Panel */}
-      <div className="bg-[#0d1117] p-4 rounded-xl border border-[#30363d] font-mono text-xs text-[#8b949e]">
-        <div className="text-[#3fb950] font-bold mb-1">Classifier Evidence (98% Confidence):</div>
-        <div className="flex gap-4 flex-wrap text-[#8b949e]">
-          <span>✓ LinkedList class / struct definition</span>
-          <span>✓ Node* next pointer chaining</span>
-          <span>✓ insert / delete / reverse pointer operations</span>
-        </div>
+      {/* Footer Info */}
+      <div className="bg-black/20 p-4 rounded-xl font-mono text-xs text-white/90 border border-white/20">
+        <span className="font-bold text-yellow-300">Semantic Evidence:</span> Linked list node chain traversal with dynamic next pointer updates.
       </div>
     </div>
   );

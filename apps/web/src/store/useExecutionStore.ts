@@ -7,22 +7,27 @@ interface IExecutionState {
   code: string;
   language: string;
   isExecuting: boolean;
+  hasExecuted: boolean;
   executionPayload: IExecutionPayload | null;
   error: string | null;
   setCode: (code: string) => void;
   setLanguage: (lang: string) => void;
   executeCode: (codeToRun?: string) => Promise<void>;
+  resetExecutionState: () => void;
 }
 
 export const useExecutionStore = create<IExecutionState>((set, get) => ({
   code: "",
   language: "python",
   isExecuting: false,
+  hasExecuted: false,
   executionPayload: null,
   error: null,
 
-  setCode: (code: string) => set({ code }),
-  setLanguage: (language: string) => set({ language }),
+  setCode: (code: string) => set({ code, hasExecuted: false }),
+  setLanguage: (language: string) => set({ language, hasExecuted: false }),
+
+  resetExecutionState: () => set({ hasExecuted: false, executionPayload: null, error: null }),
 
   executeCode: async (codeToRun?: string) => {
     const targetCode = codeToRun !== undefined ? codeToRun : get().code;
@@ -45,10 +50,10 @@ export const useExecutionStore = create<IExecutionState>((set, get) => ({
       const data: IExecutionPayload = await response.json();
 
       if (data.status === "error" && (!data.trace || !data.trace.length)) {
-        set({ error: data.error || "Execution failed", executionPayload: null, isExecuting: false });
+        set({ error: data.error || "Execution failed", executionPayload: null, isExecuting: false, hasExecuted: true });
         usePlaybackStore.getState().setMaxSteps(0);
       } else {
-        set({ executionPayload: data, isExecuting: false, error: null });
+        set({ executionPayload: data, isExecuting: false, hasExecuted: true, error: null });
         const stepCount = data.trace ? data.trace.length : 0;
         usePlaybackStore.getState().setMaxSteps(stepCount);
       }
@@ -56,6 +61,7 @@ export const useExecutionStore = create<IExecutionState>((set, get) => ({
       set({
         error: err.message || "Failed to reach backend execution engine.",
         isExecuting: false,
+        hasExecuted: true,
         executionPayload: null
       });
       usePlaybackStore.getState().setMaxSteps(0);

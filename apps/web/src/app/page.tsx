@@ -29,12 +29,12 @@ import { AlgorithmDetector } from "@/semantic-engine/detectors/AlgorithmDetector
 import { StepExplainerEngine } from "@codeflow/ai-engine";
 import { LanguageDetector } from "@codeflow/language-adapters";
 
-import { SlidersHorizontal, Sparkles, Cpu, Eye, Layers, ScrollText, Download, Activity, Share2, Keyboard, HelpCircle } from "lucide-react";
+import { SlidersHorizontal, Cpu, Eye, Layers, ScrollText, Download, Activity, Share2, Keyboard, HelpCircle, Play, Loader2, Sparkles } from "lucide-react";
 
 type ViewMode = "visualizer" | "memory" | "log";
 
 export default function Home() {
-  const { code, setCode, setLanguage, executionPayload, error: executionError } = useExecutionStore();
+  const { code, setCode, setLanguage, executionPayload, isExecuting, hasExecuted, executeCode, error: executionError } = useExecutionStore();
   const { currentStepIndex, stepNext, setStep } = usePlaybackStore();
 
   const [isPracticeMode, setIsPracticeMode] = useState<boolean>(false);
@@ -125,7 +125,7 @@ export default function Home() {
     return generateExecutionStory(executionPayload.trace);
   }, [executionPayload]);
 
-  // Factual Execution Log Stream
+  // Factual Execution Log Stream & Dynamic Narrative Card Generator
   const stepRationale = useMemo(() => {
     const algoType = semanticDetectionResult?.algorithmType || 'code';
     return StepExplainerEngine.generateRationale(null, currentStepIndex, algoType);
@@ -186,7 +186,7 @@ export default function Home() {
           <div>
             <h1 className="text-base font-bold text-white tracking-wide flex items-center gap-3">
               CodeFlow
-              {hasCode && autoLanguage && semanticDetectionResult && (
+              {hasCode && autoLanguage && semanticDetectionResult && hasExecuted && (
                 <div className="flex items-center gap-2 bg-[#1f242c] border border-[#30363d] px-3 py-1 rounded-full text-xs font-semibold">
                   <span className="text-[#58a6ff] uppercase tracking-wider font-mono text-[11px]">
                     {autoLanguage.language.toUpperCase()}
@@ -314,12 +314,14 @@ export default function Home() {
             <div className="h-full w-full flex flex-col justify-between overflow-hidden bg-[#161b22]">
               <CodeEditor activeLineNumber={activeLineNumber} language={autoLanguage?.language} />
 
-              {/* Factual Execution Log Stream Banner */}
-              {hasCode && (
+              {/* Factual Step-by-Step Narrative Explanation Card */}
+              {hasCode && hasExecuted && (
                 <div className="p-3 bg-[#0d1117] border-t border-[#30363d] font-mono text-xs text-[#e6edf3] flex items-start gap-2.5 shadow-inner shrink-0">
                   <Activity className="w-4 h-4 text-[#3fb950] shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-bold text-[#3fb950]">{stepRationale.reason}</div>
+                    <div className="font-bold text-[#3fb950]">
+                      Step {currentStepIndex + 1}: {stepRationale.reason}
+                    </div>
                     <div className="text-[#8b949e] mt-0.5">{stepRationale.explanation}</div>
                   </div>
                 </div>
@@ -327,33 +329,68 @@ export default function Home() {
             </div>
           }
           rightComponent={
-            <div className="h-full w-full flex overflow-hidden">
+            <div className="h-full w-full flex overflow-hidden relative">
               <div
                 id="visualization-canvas"
                 className="flex-1 h-full relative overflow-hidden bg-[#0d1117] bg-grid-dots"
               >
-                <ErrorBoundary>
-                  {activeViewMode === "log" ? (
-                    <div className="h-full w-full bg-[#0d1117] p-6 overflow-y-auto font-mono text-xs">
-                      <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-                        <ScrollText className="w-5 h-5 text-[#3fb950]" /> Factual Execution Log Stream
-                      </h2>
-                      <ExecutionStoryPanel
-                        storySteps={storySteps}
-                        currentStepIndex={currentStepIndex}
-                      />
+                {/* 1. Loading Spinner Overlay */}
+                {isExecuting && (
+                  <div className="absolute inset-0 bg-[#0d1117]/90 z-40 flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="w-10 h-10 text-[#58a6ff] animate-spin" />
+                    <div className="text-center font-mono">
+                      <p className="text-sm font-bold text-white">Tracing Execution Payload...</p>
+                      <p className="text-xs text-[#8b949e] mt-1">Parsing AST & semantic memory mutations</p>
                     </div>
-                  ) : (
-                    <VisualizerCanvas
-                      currentStepEvent={currentStepEvent}
-                      previousStepEvent={previousStepEvent}
-                      allTraceEvents={executionPayload?.trace || []}
-                      currentStepIndex={currentStepIndex}
-                      detectedAlgorithm={activeViewMode === "memory" ? "generic-memory" : (semanticDetectionResult?.algorithmType || "generic-memory")}
-                      code={code}
-                    />
-                  )}
-                </ErrorBoundary>
+                  </div>
+                )}
+
+                {/* 2. Idle State Placeholder Graphic */}
+                {!hasExecuted && !isExecuting && (
+                  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-8 text-center bg-[#0d1117]">
+                    <div className="w-20 h-20 rounded-2xl bg-[#161b22] border-2 border-[#30363d] flex items-center justify-center shadow-2xl mb-5">
+                      <Sparkles className="w-10 h-10 text-[#58a6ff]" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white mb-2">Ready to Visualize Execution</h2>
+                    <p className="text-xs text-[#8b949e] max-w-md mb-6">
+                      Paste or type your code on the left, then click <span className="text-[#3fb950] font-bold">"Visualize Execution"</span> below to bring your algorithm to life.
+                    </p>
+                    <button
+                      onClick={() => executeCode()}
+                      disabled={!hasCode}
+                      className="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] disabled:opacity-40 text-white font-bold text-xs px-6 py-3 rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
+                    >
+                      <Play className="w-4 h-4 fill-white" />
+                      Visualize Execution
+                    </button>
+                  </div>
+                )}
+
+                {/* 3. Execution Visualizer Canvas */}
+                {hasExecuted && (
+                  <ErrorBoundary>
+                    {activeViewMode === "log" ? (
+                      <div className="h-full w-full bg-[#0d1117] p-6 overflow-y-auto font-mono text-xs">
+                        <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                          <ScrollText className="w-5 h-5 text-[#3fb950]" /> Factual Execution Log Stream
+                        </h2>
+                        <ExecutionStoryPanel
+                          storySteps={storySteps}
+                          currentStepIndex={currentStepIndex}
+                        />
+                      </div>
+                    ) : (
+                      <VisualizerCanvas
+                        currentStepEvent={currentStepEvent}
+                        previousStepEvent={previousStepEvent}
+                        allTraceEvents={executionPayload?.trace || []}
+                        currentStepIndex={currentStepIndex}
+                        detectedAlgorithm={activeViewMode === "memory" ? "generic-memory" : (semanticDetectionResult?.algorithmType || "generic-memory")}
+                        code={code}
+                      />
+                    )}
+                  </ErrorBoundary>
+                )}
 
                 {/* Interactive Practice Mode Overlay */}
                 {isPracticeMode && currentStepEvent && (
@@ -367,7 +404,7 @@ export default function Home() {
               </div>
 
               {/* Right Side Inspector Panel */}
-              {!isPracticeMode && showAdvancedInspectors && (
+              {!isPracticeMode && showAdvancedInspectors && hasExecuted && (
                 <div className="w-80 h-full bg-[#161b22] p-4 flex flex-col gap-3 overflow-y-auto border-l border-[#30363d] shrink-0">
                   <MemoryInsightsPanel memoryAnalysis={memoryAnalysis} />
                   <ExecutionStoryPanel
