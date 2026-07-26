@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { VisualizerCanvas } from "@/components/visualizer/VisualizerCanvas";
 import { ControlBar } from "@/components/controls/ControlBar";
@@ -11,7 +11,9 @@ import { VariableInspector } from "@/components/inspectors/VariableInspector";
 import { ConsoleOutput } from "@/components/inspectors/ConsoleOutput";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
-import { PredictionCard } from "@/components/learning/PredictionCard";
+import { ShareModal } from "@/components/modals/ShareModal";
+import { ShortcutsModal } from "@/components/modals/ShortcutsModal";
+import { PracticeModeOverlay } from "@/components/learning/PracticeModeOverlay";
 import { ExecutionStoryPanel } from "@/components/learning/ExecutionStoryPanel";
 import { ConceptCardModal } from "@/components/learning/ConceptCardModal";
 
@@ -22,27 +24,67 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { computeFrameDiff } from "@/lib/frameDiffEngine";
 import { analyzeMemoryLayout } from "@/lib/memory/memoryLayoutEngine";
 import { generateExecutionStory } from "@/lib/learning/narrativeGenerator";
-import { generatePredictionQuestions } from "@/lib/learning/predictionEngine";
 
 import { AlgorithmDetector } from "@/semantic-engine/detectors/AlgorithmDetector";
 import { StepExplainerEngine } from "@codeflow/ai-engine";
 import { LanguageDetector } from "@codeflow/language-adapters";
 
-import { SlidersHorizontal, Sparkles, Cpu, Eye, Layers, ScrollText, Download, Activity, Share2, Settings } from "lucide-react";
+import { SlidersHorizontal, Sparkles, Cpu, Eye, Layers, ScrollText, Download, Activity, Share2, Keyboard, HelpCircle } from "lucide-react";
 
 type ViewMode = "visualizer" | "memory" | "log";
 
 export default function Home() {
-  const { code, executionPayload, error: executionError } = useExecutionStore();
-  const { currentStepIndex, stepNext } = usePlaybackStore();
+  const { code, setCode, setLanguage, executionPayload, error: executionError } = useExecutionStore();
+  const { currentStepIndex, stepNext, setStep } = usePlaybackStore();
 
-  const [isPredictionMode, setIsPredictionMode] = useState<boolean>(false);
+  const [isPracticeMode, setIsPracticeMode] = useState<boolean>(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState<boolean>(false);
   const [showAdvancedInspectors, setShowAdvancedInspectors] = useState<boolean>(false);
   const [activeConceptKey, setActiveConceptKey] = useState<"stack" | "heap" | null>(null);
   const [activeViewMode, setActiveViewMode] = useState<ViewMode>("visualizer");
 
+  // Rehydrate state on load if share payload parameter exists in URL
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const shareParam = urlParams.get("share");
+    if (shareParam) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(atob(shareParam)));
+        if (decoded.code) setCode(decoded.code);
+        if (decoded.language) setLanguage(decoded.language);
+        if (decoded.currentStep !== undefined) setStep(decoded.currentStep);
+      } catch (err) {
+        console.error("Failed to rehydrate shared session payload:", err);
+      }
+    }
+  }, [setCode, setLanguage, setStep]);
+
+  // Keydown listener for ? key shortcuts modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable || target.closest(".monaco-editor"))) {
+        return;
+      }
+
+      if (e.key === "?") {
+        e.preventDefault();
+        setIsShortcutsModalOpen((prev) => !prev);
+      } else if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        setIsShareModalOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Global Keyboard Navigation Shortcuts
-  useKeyboardShortcuts(() => setIsPredictionMode(prev => !prev));
+  useKeyboardShortcuts(() => setIsPracticeMode(prev => !prev));
 
   const hasCode = code && code.trim() !== "";
 
@@ -89,16 +131,6 @@ export default function Home() {
     return StepExplainerEngine.generateRationale(null, currentStepIndex, algoType);
   }, [currentStepIndex, semanticDetectionResult]);
 
-  // Interactive Prediction Questions
-  const predictionQuestions = useMemo(() => {
-    if (!executionPayload || !executionPayload.trace.length) return [];
-    return generatePredictionQuestions(executionPayload.trace);
-  }, [executionPayload]);
-
-  const activePrediction = useMemo(() => {
-    return predictionQuestions.find(q => q.stepIndex === currentStepIndex) || null;
-  }, [predictionQuestions, currentStepIndex]);
-
   const activeLineNumber = currentStepEvent?.line_number;
 
   // Image Exporter Helper
@@ -128,6 +160,21 @@ export default function Home() {
       <ConceptCardModal
         conceptKey={activeConceptKey}
         onClose={() => setActiveConceptKey(null)}
+      />
+
+      {/* Share Session Modal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        code={code}
+        language={autoLanguage?.language || "python"}
+        currentStep={currentStepIndex}
+      />
+
+      {/* Keyboard Shortcuts Modal (?) */}
+      <ShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
       />
 
       {/* CodeFlow Top Navigation Header */}
@@ -200,11 +247,24 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls & Practice Mode Toggle */}
         <div className="flex items-center gap-2">
+          {/* Practice Mode Toggle */}
+          <button
+            onClick={() => setIsPracticeMode(!isPracticeMode)}
+            className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-semibold transition-all focus:outline-none ${
+              isPracticeMode
+                ? "bg-[#3fb950] text-[#0d1117] border-[#3fb950] shadow-md"
+                : "bg-[#21262d] border-[#30363d] text-[#e6edf3] hover:bg-[#30363d]"
+            }`}
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            {isPracticeMode ? "Practice ON" : "Practice Mode"}
+          </button>
+
           <button
             onClick={handleExportCanvasImage}
-            title="Export Visualization Image"
+            title="Export Visualization Image (E)"
             className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#30363d] bg-[#21262d] text-[#e6edf3] hover:bg-[#30363d] font-medium transition-all focus:outline-none"
           >
             <Download className="w-3.5 h-3.5 text-[#3fb950]" />
@@ -212,11 +272,21 @@ export default function Home() {
           </button>
 
           <button
-            title="Share Visualization Session"
+            onClick={() => setIsShareModalOpen(true)}
+            title="Share Visualization Session (S)"
             className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#30363d] bg-[#21262d] text-[#e6edf3] hover:bg-[#30363d] font-medium transition-all focus:outline-none"
           >
             <Share2 className="w-3.5 h-3.5 text-[#58a6ff]" />
             Share
+          </button>
+
+          <button
+            onClick={() => setIsShortcutsModalOpen(true)}
+            title="Keyboard Shortcuts (?)"
+            aria-label="Keyboard Shortcuts"
+            className="p-1.5 rounded-lg border border-[#30363d] bg-[#21262d] text-[#8b949e] hover:text-white transition-all"
+          >
+            <Keyboard className="w-4 h-4" />
           </button>
 
           <button
@@ -285,11 +355,11 @@ export default function Home() {
                   )}
                 </ErrorBoundary>
 
-                {/* Interactive Prediction Overlay */}
-                {isPredictionMode && activePrediction && (
-                  <div className="absolute top-4 left-4 right-4 z-30">
-                    <PredictionCard
-                      question={activePrediction}
+                {/* Interactive Practice Mode Overlay */}
+                {isPracticeMode && currentStepEvent && (
+                  <div className="absolute top-6 left-6 right-6 z-30">
+                    <PracticeModeOverlay
+                      currentStepEvent={currentStepEvent}
                       onContinue={() => stepNext()}
                     />
                   </div>
@@ -297,7 +367,7 @@ export default function Home() {
               </div>
 
               {/* Right Side Inspector Panel */}
-              {showAdvancedInspectors && (
+              {!isPracticeMode && showAdvancedInspectors && (
                 <div className="w-80 h-full bg-[#161b22] p-4 flex flex-col gap-3 overflow-y-auto border-l border-[#30363d] shrink-0">
                   <MemoryInsightsPanel memoryAnalysis={memoryAnalysis} />
                   <ExecutionStoryPanel
