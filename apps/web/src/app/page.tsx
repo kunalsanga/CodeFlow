@@ -8,6 +8,7 @@ import { StepChangesPanel } from "@/components/inspectors/StepChangesPanel";
 import { MemoryInsightsPanel } from "@/components/inspectors/MemoryInsightsPanel";
 import { VariableInspector } from "@/components/inspectors/VariableInspector";
 import { ConsoleOutput } from "@/components/inspectors/ConsoleOutput";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 import { PredictionCard } from "@/components/learning/PredictionCard";
 import { ExecutionStoryPanel } from "@/components/learning/ExecutionStoryPanel";
@@ -126,7 +127,7 @@ export default function Home() {
         onClose={() => setActiveConceptKey(null)}
       />
 
-      {/* CodeFlow v1.0 Top Navigation Header */}
+      {/* CodeFlow Top Navigation Header */}
       <header className="h-14 bg-[#161b22] border-b border-[#30363d] px-6 flex items-center justify-between shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg shadow-md flex items-center gap-1">
@@ -211,7 +212,7 @@ export default function Home() {
       <main className="flex-1 grid grid-cols-12 overflow-hidden">
         {/* Left Column: Code Editor */}
         <div className={`${showAdvancedInspectors ? "col-span-4" : "col-span-5"} h-full border-r border-[#30363d] overflow-hidden transition-all flex flex-col justify-between`}>
-          <CodeEditor activeLineNumber={activeLineNumber} />
+          <CodeEditor activeLineNumber={activeLineNumber} language={autoLanguage?.language} />
 
           {/* Factual Execution Log Stream Banner */}
           {hasCode && (
@@ -225,28 +226,30 @@ export default function Home() {
           )}
         </div>
 
-        {/* Center Column: Adaptive Canvas Mode */}
+        {/* Center Column: Adaptive Canvas Mode wrapped in ErrorBoundary */}
         <div id="visualization-canvas" className={`${showAdvancedInspectors ? "col-span-5" : "col-span-7"} h-full border-r border-[#30363d] overflow-hidden relative transition-all`}>
-          {activeViewMode === "log" ? (
-            <div className="h-full w-full bg-[#0d1117] p-6 overflow-y-auto font-mono text-xs">
-              <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-                <ScrollText className="w-5 h-5 text-emerald-400" /> Factual Execution Log Stream
-              </h2>
-              <ExecutionStoryPanel
-                storySteps={storySteps}
+          <ErrorBoundary>
+            {activeViewMode === "log" ? (
+              <div className="h-full w-full bg-[#0d1117] p-6 overflow-y-auto font-mono text-xs">
+                <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                  <ScrollText className="w-5 h-5 text-emerald-400" /> Factual Execution Log Stream
+                </h2>
+                <ExecutionStoryPanel
+                  storySteps={storySteps}
+                  currentStepIndex={currentStepIndex}
+                />
+              </div>
+            ) : (
+              <VisualizerCanvas
+                currentStepEvent={currentStepEvent}
+                previousStepEvent={previousStepEvent}
+                allTraceEvents={executionPayload?.trace || []}
                 currentStepIndex={currentStepIndex}
+                detectedAlgorithm={activeViewMode === "memory" ? "generic-memory" : (semanticDetectionResult?.algorithmType || "generic-memory")}
+                code={code}
               />
-            </div>
-          ) : (
-            <VisualizerCanvas
-              currentStepEvent={currentStepEvent}
-              previousStepEvent={previousStepEvent}
-              allTraceEvents={executionPayload?.trace || []}
-              currentStepIndex={currentStepIndex}
-              detectedAlgorithm={activeViewMode === "memory" ? "generic-memory" : (semanticDetectionResult?.algorithmType || "generic-memory")}
-              code={code}
-            />
-          )}
+            )}
+          </ErrorBoundary>
 
           {/* Interactive Prediction Overlay */}
           {isPredictionMode && activePrediction && (

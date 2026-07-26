@@ -3,6 +3,8 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.engine.executor import execute_code_with_engine
+from app.engine.sandbox_runner import execute_code_in_sandbox
+from app.utils.languageDetector import LanguageDetector
 
 def test_1_hello_world():
     code = 'print("Hello World")'
@@ -78,6 +80,29 @@ a.append(a)
     assert res["status"] == "success"
     print("[PASS] Test 7 (Circular Reference Safety)")
 
+def test_8_multi_language_executors():
+    cpp_code = """#include <iostream>
+int main() {
+    std::cout << "C++ CodeFlow" << std::endl;
+    return 0;
+}"""
+    res = execute_code_in_sandbox(code=cpp_code, language="cpp")
+    assert res["status"] == "success"
+    assert res["detected_language"] == "cpp"
+    assert len(res["trace"]) > 0
+    print("[PASS] Test 8 (Multi-Language C++ Executor)")
+
+def test_9_language_detector():
+    java_code = """public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello Java");
+    }
+}"""
+    detection = LanguageDetector.detect(java_code)
+    assert detection["language"] == "java"
+    assert detection["confidence"] > 0.3
+    print("[PASS] Test 9 (Backend Language Auto-Detector)")
+
 if __name__ == "__main__":
     test_1_hello_world()
     test_2_basic_arithmetic()
@@ -86,4 +111,6 @@ if __name__ == "__main__":
     test_5_functions()
     test_6_recursion_fibonacci()
     test_7_circular_references()
-    print("\nALL 7 ENGINE BENCHMARK TESTS PASSED SUCCESSFULLY!")
+    test_8_multi_language_executors()
+    test_9_language_detector()
+    print("\nALL 9 ENGINE BENCHMARK TESTS PASSED SUCCESSFULLY!")

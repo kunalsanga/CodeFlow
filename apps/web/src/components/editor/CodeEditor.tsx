@@ -7,9 +7,10 @@ import { Sparkles, Code2 } from "lucide-react";
 
 interface CodeEditorProps {
   activeLineNumber?: number;
+  language?: string;
 }
 
-export const CodeEditor: React.FC<CodeEditorProps> = ({ activeLineNumber }) => {
+export const CodeEditor: React.FC<CodeEditorProps> = ({ activeLineNumber, language = "python" }) => {
   const { code, setCode, isExecuting } = useExecutionStore();
   const editorRef = useRef<any>(null);
   const decorationsRef = useRef<string[]>([]);
@@ -17,6 +18,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ activeLineNumber }) => {
   const handleEditorDidMount = (editor: any, monaco: Monaco) => {
     editorRef.current = editor;
   };
+
+  // Map backend language name to Monaco language identifier
+  const monacoLanguage = React.useMemo(() => {
+    const lang = (language || "python").toLowerCase();
+    if (lang === "cpp" || lang === "c++") return "cpp";
+    if (lang === "js" || lang === "javascript") return "javascript";
+    if (lang === "ts" || lang === "typescript") return "typescript";
+    if (lang === "java") return "java";
+    if (lang === "go" || lang === "golang") return "go";
+    if (lang === "rust") return "rust";
+    return "python";
+  }, [language]);
 
   // Synchronize active line highlight with playback step line
   useEffect(() => {
@@ -51,7 +64,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ activeLineNumber }) => {
         <div className="flex items-center gap-2">
           <Code2 className="w-4 h-4 text-indigo-400" />
           <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
-            Code Editor
+            Code Editor ({monacoLanguage.toUpperCase()})
           </span>
         </div>
         {isExecuting && (
@@ -64,7 +77,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ activeLineNumber }) => {
       <div className="flex-1 w-full relative">
         <Editor
           height="100%"
-          defaultLanguage="python"
+          language={monacoLanguage}
           theme="vs-dark"
           value={code}
           onChange={(value) => setCode(value || "")}
@@ -93,7 +106,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ activeLineNumber }) => {
 
             <div className="bg-[#161b22] border border-[#30363d] p-3 rounded-xl text-left max-w-sm w-full font-mono text-xs text-slate-300 space-y-1.5 shadow-inner">
               <div className="text-indigo-400 font-bold mb-1">Supported Languages & Structures:</div>
-              <div className="text-gray-400">✓ Python, C++, Java, JavaScript, TypeScript</div>
+              <div className="text-gray-400">✓ Python, C++, Java, JavaScript, TypeScript, Go, Rust</div>
               <div className="text-gray-400">✓ Graphs, Trees, Heaps, Dynamic Programming</div>
               <div className="text-gray-400">✓ Recursion Call Stack, RAM Memory Tracing</div>
             </div>

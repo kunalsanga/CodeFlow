@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
 class CodeExecutionRequest(BaseModel):
-    language: str = Field(default="python", description="Programming language of the code")
+    language: Optional[str] = Field(default=None, description="Programming language of the code (auto-detected if omitted)")
     code: str = Field(..., description="Source code string to execute and trace")
     max_steps: Optional[int] = Field(default=500, description="Maximum execution step cap")
 
