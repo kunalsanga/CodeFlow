@@ -103,6 +103,13 @@ def test_9_language_detector():
     assert detection["confidence"] > 0.3
     print("[PASS] Test 9 (Backend Language Auto-Detector)")
 
+def test_10_sandbox_forbidden_imports():
+    malicious_code = "import os\nos.system('echo malicious')"
+    res = execute_code_in_sandbox(code=malicious_code, language="python")
+    assert res.get("error") is True
+    assert res.get("error_type") == "sandbox"
+    print("[PASS] Test 10 (Security Sandbox Blocked Forbidden Imports)")
+
 if __name__ == "__main__":
     test_1_hello_world()
     test_2_basic_arithmetic()
@@ -113,4 +120,5 @@ if __name__ == "__main__":
     test_7_circular_references()
     test_8_multi_language_executors()
     test_9_language_detector()
-    print("\nALL 9 ENGINE BENCHMARK TESTS PASSED SUCCESSFULLY!")
+    test_10_sandbox_forbidden_imports()
+    print("\nALL 10 ENGINE BENCHMARK TESTS PASSED SUCCESSFULLY!")
