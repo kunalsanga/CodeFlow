@@ -26,7 +26,7 @@ import { AlgorithmDetector } from "@/semantic-engine/detectors/AlgorithmDetector
 import { StepExplainerEngine } from "@codeflow/ai-engine";
 import { LanguageDetector } from "@codeflow/language-adapters";
 
-import { SlidersHorizontal, Sparkles, Cpu, Eye, Layers, ScrollText, Terminal, Activity } from "lucide-react";
+import { SlidersHorizontal, Sparkles, Cpu, Eye, Layers, ScrollText, Download, Activity } from "lucide-react";
 
 type ViewMode = "visualizer" | "memory" | "log";
 
@@ -39,7 +39,7 @@ export default function Home() {
   const [activeConceptKey, setActiveConceptKey] = useState<"stack" | "heap" | null>(null);
   const [activeViewMode, setActiveViewMode] = useState<ViewMode>("visualizer");
 
-  // Keyboard navigation shortcuts
+  // Global Keyboard Navigation Shortcuts (Space: Play/Pause, Right: Step Next, Left: Step Prev, Home: Restart, End: Finish)
   useKeyboardShortcuts(() => setIsPredictionMode(prev => !prev));
 
   const hasCode = code && code.trim() !== "";
@@ -99,6 +99,25 @@ export default function Home() {
 
   const activeLineNumber = currentStepEvent?.line_number;
 
+  // Image Exporter Helper
+  const handleExportCanvasImage = () => {
+    const canvasContainer = document.querySelector('#visualization-canvas');
+    if (!canvasContainer) return;
+
+    const svgElement = canvasContainer.querySelector('svg');
+    if (svgElement) {
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = `codeflow-step-${currentStepIndex + 1}.svg`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  };
+
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#0d1117]">
       {/* Concept Card Modal */}
@@ -107,7 +126,7 @@ export default function Home() {
         onClose={() => setActiveConceptKey(null)}
       />
 
-      {/* CodeFlow v1.0 PRD Top Navigation Header */}
+      {/* CodeFlow v1.0 Top Navigation Header */}
       <header className="h-14 bg-[#161b22] border-b border-[#30363d] px-6 flex items-center justify-between shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg shadow-md flex items-center gap-1">
@@ -163,6 +182,16 @@ export default function Home() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Canvas Image Exporter */}
+          <button
+            onClick={handleExportCanvasImage}
+            title="Export Visualization Image"
+            className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#30363d] bg-[#21262d] text-gray-300 hover:text-white font-medium transition-all focus:outline-none"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            Export SVG
+          </button>
+
           <button
             onClick={() => setShowAdvancedInspectors(!showAdvancedInspectors)}
             aria-label="Toggle Advanced Inspector Panels"
@@ -197,7 +226,7 @@ export default function Home() {
         </div>
 
         {/* Center Column: Adaptive Canvas Mode */}
-        <div className={`${showAdvancedInspectors ? "col-span-5" : "col-span-7"} h-full border-r border-[#30363d] overflow-hidden relative transition-all`}>
+        <div id="visualization-canvas" className={`${showAdvancedInspectors ? "col-span-5" : "col-span-7"} h-full border-r border-[#30363d] overflow-hidden relative transition-all`}>
           {activeViewMode === "log" ? (
             <div className="h-full w-full bg-[#0d1117] p-6 overflow-y-auto font-mono text-xs">
               <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
