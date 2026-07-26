@@ -1,9 +1,10 @@
 import { IAlgorithmDetectionResult } from '@/types/semantic/ir';
 import { ASTParser, ICodeFlowAST } from '../parser/ast_parser';
 
-// Multi-Stage Semantic DSA Detection Engine for CodeFlow
+// Multi-Stage Semantic DSA Detection Engine for CodeFlow (Milestone B)
 // Evaluates AST Analysis, Runtime Trace Dynamics, Data Structure Graph Topology,
 // Algorithmic Behavior Idioms, and Weighted Confidence Scoring (0 - 100%).
+// Priority Hierarchy: DP -> Graph -> Tree/BST -> Trie -> Heap -> LinkedList -> String -> Sorting -> Searching -> Stack/Queue -> Generic
 
 interface IDSAEvaluator {
   name: string;
@@ -13,10 +14,10 @@ interface IDSAEvaluator {
 
 export class AlgorithmDetector {
   private static evaluators: IDSAEvaluator[] = [
-    // 1. Binary Search Tree Evaluator - Highest Priority for Tree Topology
+    // 1. Dynamic Programming Evaluator (Highest Priority for Tabulation / Memoization)
     {
-      name: 'binary-search-tree',
-      suggestedRenderer: 'bst-renderer',
+      name: 'dynamic-programming',
+      suggestedRenderer: 'dp-renderer',
       evaluate(ast, code) {
         let astScore = 0;
         let traceScore = 0;
@@ -24,55 +25,19 @@ export class AlgorithmDetector {
         let behaviorScore = 0;
         const evidence: string[] = [];
 
-        // Check if code defines left and right child pointers (Tree Node)
-        const hasTreePointers = (ast.detectedClasses.some(c => c.fields.includes('left') && c.fields.includes('right'))) ||
-          (/\bleft\b/i.test(code) && /\bright\b/i.test(code));
-
-        if (hasTreePointers) {
-          astScore += 50;
-          evidence.push('AST: Node struct/class defines both left and right child pointers');
-        }
-
-        if (/root|insert|inorder|preorder|postorder|rotate_right|rotate_left/i.test(code)) {
-          behaviorScore += 45;
-          evidence.push('Behavior: Tree insertion / traversal / rotation operations');
-        }
-
-        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
-        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
-      },
-    },
-
-    // 2. Linked List Evaluator (Singly / Doubly Linked List)
-    {
-      name: 'linked-list',
-      suggestedRenderer: 'linked-list-renderer',
-      evaluate(ast, code) {
-        let astScore = 0;
-        let traceScore = 0;
-        let graphScore = 0;
-        let behaviorScore = 0;
-        const evidence: string[] = [];
-
-        // Strict Guard: If code defines both 'left' and 'right' pointers, it is a Tree, NOT a Linked List!
-        const hasTreePointers = /\bleft\b.*?\bright\b|\bright\b.*?\bleft\b/i.test(code);
-        if (hasTreePointers) {
+        const hasDPStorage = /vector\s*<\s*vector\s*<\s*int\s*>\s*>\s*dp|vector\s*<\s*int\s*>\s*dp|\bdp\s*\[|\bmemo\s*\[|@lru_cache/i.test(code);
+        if (!hasDPStorage) {
           return { confidence: 0, evidence: [], stageScores: { astScore: 0, traceScore: 0, graphScore: 0, behaviorScore: 0 } };
         }
 
-        if (/struct\s+Node|class\s+Node|Node\*|next\b|prev\b|head\b|tail\b|LinkedList/i.test(code)) {
+        if (ast.semanticTagsFound.has('DP_TABLE') || hasDPStorage) {
           astScore += 45;
-          evidence.push('AST: Node class/struct with next/prev pointers & LinkedList structure');
+          evidence.push('AST: 1D/2D DP table memoization storage detected');
         }
 
-        if (/insert|insertFront|deleteNode|delete|reverse|display|search/i.test(code) && /head|next|Node/i.test(code)) {
-          behaviorScore += 45;
-          evidence.push('Behavior: Linked list insertion, deletion, reversal, and pointer traversal');
-        }
-
-        if (/LinkedList\s+\w+|head\s*=\s*new\s+Node|curr->next|temp->next/i.test(code)) {
-          graphScore += 10;
-          evidence.push('Graph Topology: Sequential pointer chaining');
+        if (/dp\[i\]\[j\]|dp\[i\]|memo\[.*\]|knapsack|lcs|lis|coin_change|matrix_chain/i.test(code)) {
+          behaviorScore += 50;
+          evidence.push('Behavior: DP recurrence relation state transition with table storage');
         }
 
         const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
@@ -80,96 +45,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // 3. Recursion Call Stack Evaluator
-    {
-      name: 'recursion',
-      suggestedRenderer: 'recursion-renderer',
-      evaluate(ast, code) {
-        let astScore = 0;
-        let traceScore = 0;
-        let graphScore = 0;
-        let behaviorScore = 0;
-        const evidence: string[] = [];
-
-        const isRecursiveFunc = ast.semanticTagsFound.has('RECURSION') || /def\s+(\w+)[\s\S]*?\b\1\s*\(/i.test(code) || /function\s+(\w+)[\s\S]*?\b\1\s*\(/i.test(code);
-        if (isRecursiveFunc) {
-          astScore += 50;
-          evidence.push('AST: Self-referential recursive function call');
-        }
-
-        if (/if\s+.*<=?\s*\d+:?\s*return|if\s*\(.*<=?\s*\d+\)\s*return/i.test(code) || /return\s+\w+\s*\(.*?\)\s*[\+\-\*\/]/i.test(code)) {
-          behaviorScore += 45;
-          evidence.push('Behavior: Base case return condition and recursive stack unwind');
-        }
-
-        if (isRecursiveFunc && !/dp\[|memo\[|@lru_cache/i.test(code)) {
-          astScore += 5;
-        }
-
-        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
-        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
-      },
-    },
-
-    // 4. BFS (Breadth-First Search) Evaluator
-    {
-      name: 'bfs',
-      suggestedRenderer: 'bfs-renderer',
-      evaluate(ast, code) {
-        let astScore = 0;
-        let traceScore = 0;
-        let graphScore = 0;
-        let behaviorScore = 0;
-        const evidence: string[] = [];
-
-        if (/deque|queue|popleft|shift\(/i.test(code)) {
-          astScore += 35;
-          evidence.push('AST: Queue data structure operations (deque / popleft)');
-        }
-        if (/visited\.add|visited\.insert|visited\[|visited_set/i.test(code)) {
-          graphScore += 30;
-          evidence.push('Graph Topology: Visited set tracking');
-        }
-        if (/while\s+q|while\s+queue|for.*graph\[/i.test(code)) {
-          behaviorScore += 35;
-          evidence.push('Behavior: BFS level-order queue loop traversal');
-        }
-
-        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
-        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
-      },
-    },
-
-    // 5. DFS (Depth-First Search) Evaluator
-    {
-      name: 'dfs',
-      suggestedRenderer: 'dfs-renderer',
-      evaluate(ast, code) {
-        let astScore = 0;
-        let traceScore = 0;
-        let graphScore = 0;
-        let behaviorScore = 0;
-        const evidence: string[] = [];
-
-        if (/def\s+dfs|function\s+dfs|void\s+dfs/i.test(code)) {
-          astScore += 35;
-          evidence.push('AST: Recursive function definition for DFS');
-        }
-        if (/visited\.add|visited\.insert|visited\[/i.test(code)) {
-          graphScore += 30;
-          evidence.push('Graph Topology: Visited set tracking');
-        }
-        if (/dfs\(.*nxt\)|dfs\(.*neighbor\)|dfs\(.*v\)/i.test(code) || (/dfs\(/i.test(code) && /graph\[/i.test(code))) {
-          behaviorScore += 35;
-          evidence.push('Behavior: Recursive graph traversal and backtracking');
-        }
-
-        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
-        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
-      },
-    },
-
-    // 6. Dijkstra Algorithm Evaluator
+    // 2. Graph Algorithms Evaluator (BFS, DFS, Dijkstra, Bellman-Ford, Kruskal, Prim)
     {
       name: 'dijkstra',
       suggestedRenderer: 'dijkstra-renderer',
@@ -202,7 +78,148 @@ export class AlgorithmDetector {
       },
     },
 
-    // 7. Merge Sort Evaluator
+    {
+      name: 'bfs',
+      suggestedRenderer: 'bfs-renderer',
+      evaluate(ast, code) {
+        let astScore = 0;
+        let traceScore = 0;
+        let graphScore = 0;
+        let behaviorScore = 0;
+        const evidence: string[] = [];
+
+        if (/deque|queue|popleft|shift\(/i.test(code)) {
+          astScore += 35;
+          evidence.push('AST: Queue data structure operations (deque / popleft)');
+        }
+        if (/visited\.add|visited\.insert|visited\[|visited_set/i.test(code)) {
+          graphScore += 30;
+          evidence.push('Graph Topology: Visited set tracking');
+        }
+        if (/while\s+q|while\s+queue|for.*graph\[/i.test(code)) {
+          behaviorScore += 35;
+          evidence.push('Behavior: BFS level-order queue loop traversal');
+        }
+
+        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
+        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
+      },
+    },
+
+    {
+      name: 'dfs',
+      suggestedRenderer: 'dfs-renderer',
+      evaluate(ast, code) {
+        let astScore = 0;
+        let traceScore = 0;
+        let graphScore = 0;
+        let behaviorScore = 0;
+        const evidence: string[] = [];
+
+        if (/def\s+dfs|function\s+dfs|void\s+dfs/i.test(code)) {
+          astScore += 35;
+          evidence.push('AST: Recursive function definition for DFS');
+        }
+        if (/visited\.add|visited\.insert|visited\[/i.test(code)) {
+          graphScore += 30;
+          evidence.push('Graph Topology: Visited set tracking');
+        }
+        if (/dfs\(.*nxt\)|dfs\(.*neighbor\)|dfs\(.*v\)/i.test(code) || (/dfs\(/i.test(code) && /graph\[/i.test(code))) {
+          behaviorScore += 35;
+          evidence.push('Behavior: Recursive graph traversal and backtracking');
+        }
+
+        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
+        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
+      },
+    },
+
+    // 3. Binary Tree & BST Evaluator
+    {
+      name: 'binary-search-tree',
+      suggestedRenderer: 'bst-renderer',
+      evaluate(ast, code) {
+        let astScore = 0;
+        let traceScore = 0;
+        let graphScore = 0;
+        let behaviorScore = 0;
+        const evidence: string[] = [];
+
+        const hasTreePointers = (ast.detectedClasses.some(c => c.fields.includes('left') && c.fields.includes('right'))) ||
+          (/\bleft\b/i.test(code) && /\bright\b/i.test(code));
+
+        if (hasTreePointers) {
+          astScore += 50;
+          evidence.push('AST: Node struct/class defines both left and right child pointers');
+        }
+
+        if (/root|insert|inorder|preorder|postorder|rotate_right|rotate_left/i.test(code)) {
+          behaviorScore += 45;
+          evidence.push('Behavior: Tree insertion / traversal / rotation operations');
+        }
+
+        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
+        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
+      },
+    },
+
+    // 4. Trie Evaluator
+    {
+      name: 'trie',
+      suggestedRenderer: 'trie-renderer',
+      evaluate(ast, code) {
+        let astScore = 0;
+        let traceScore = 0;
+        let graphScore = 0;
+        let behaviorScore = 0;
+        const evidence: string[] = [];
+
+        if (/children|child|is_end_of_word|isEnd/i.test(code)) {
+          astScore += 40;
+          evidence.push('AST: Trie node children mapping and end-of-word flags');
+        }
+        if (/insert\(.*word\)|search\(.*word\)|startsWith/i.test(code)) {
+          behaviorScore += 60;
+          evidence.push('Behavior: Trie character prefix traversal');
+        }
+
+        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
+        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
+      },
+    },
+
+    // 5. Linked List Evaluator (Strict Guard against Tree pointers)
+    {
+      name: 'linked-list',
+      suggestedRenderer: 'linked-list-renderer',
+      evaluate(ast, code) {
+        let astScore = 0;
+        let traceScore = 0;
+        let graphScore = 0;
+        let behaviorScore = 0;
+        const evidence: string[] = [];
+
+        const hasTreePointers = /\bleft\b.*?\bright\b|\bright\b.*?\bleft\b/i.test(code);
+        if (hasTreePointers) {
+          return { confidence: 0, evidence: [], stageScores: { astScore: 0, traceScore: 0, graphScore: 0, behaviorScore: 0 } };
+        }
+
+        if (/struct\s+Node|class\s+Node|Node\*|next\b|prev\b|head\b|tail\b|LinkedList/i.test(code)) {
+          astScore += 45;
+          evidence.push('AST: Node class/struct with next/prev pointers & LinkedList structure');
+        }
+
+        if (/insert|insertFront|deleteNode|delete|reverse|display|search/i.test(code) && /head|next|Node/i.test(code)) {
+          behaviorScore += 45;
+          evidence.push('Behavior: Linked list insertion, deletion, reversal, and pointer traversal');
+        }
+
+        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
+        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
+      },
+    },
+
+    // 6. Sorting Algorithms Evaluators (Merge Sort & Quick Sort)
     {
       name: 'merge-sort',
       suggestedRenderer: 'merge-sort-renderer',
@@ -231,7 +248,6 @@ export class AlgorithmDetector {
       },
     },
 
-    // 8. Quick Sort Evaluator
     {
       name: 'quick-sort',
       suggestedRenderer: 'quick-sort-renderer',
@@ -260,10 +276,10 @@ export class AlgorithmDetector {
       },
     },
 
-    // 9. Trie Evaluator
+    // 7. LRU Cache Evaluator (Doubly Linked List + HashMap)
     {
-      name: 'trie',
-      suggestedRenderer: 'trie-renderer',
+      name: 'lru-cache',
+      suggestedRenderer: 'lru-cache-renderer',
       evaluate(ast, code) {
         let astScore = 0;
         let traceScore = 0;
@@ -271,13 +287,13 @@ export class AlgorithmDetector {
         let behaviorScore = 0;
         const evidence: string[] = [];
 
-        if (/children|child|is_end_of_word|isEnd/i.test(code)) {
-          astScore += 40;
-          evidence.push('AST: Trie node children mapping and end-of-word flags');
+        if (/LRUCache|get\(.*key\)|put\(.*key/i.test(code)) {
+          astScore += 50;
+          evidence.push('AST: LRUCache class definition with get/put operations');
         }
-        if (/insert\(.*word\)|search\(.*word\)|startsWith/i.test(code)) {
-          behaviorScore += 60;
-          evidence.push('Behavior: Trie character prefix traversal');
+        if (/capacity|capacity_|_capacity/i.test(code) && /head|tail|prev|next/i.test(code)) {
+          behaviorScore += 45;
+          evidence.push('Behavior: HashMap lookup paired with Doubly Linked List eviction');
         }
 
         const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
@@ -285,10 +301,10 @@ export class AlgorithmDetector {
       },
     },
 
-    // 10. Dynamic Programming Evaluator
+    // 8. Recursion Call Stack Evaluator
     {
-      name: 'dynamic-programming',
-      suggestedRenderer: 'dp-renderer',
+      name: 'recursion',
+      suggestedRenderer: 'recursion-renderer',
       evaluate(ast, code) {
         let astScore = 0;
         let traceScore = 0;
@@ -296,19 +312,15 @@ export class AlgorithmDetector {
         let behaviorScore = 0;
         const evidence: string[] = [];
 
-        const hasDPStorage = /vector\s*<\s*vector\s*<\s*int\s*>\s*>\s*dp|vector\s*<\s*int\s*>\s*dp|\bdp\s*\[|\bmemo\s*\[|@lru_cache/i.test(code);
-        if (!hasDPStorage) {
-          return { confidence: 0, evidence: [], stageScores: { astScore: 0, traceScore: 0, graphScore: 0, behaviorScore: 0 } };
+        const isRecursiveFunc = ast.semanticTagsFound.has('RECURSION') || /def\s+(\w+)[\s\S]*?\b\1\s*\(/i.test(code) || /function\s+(\w+)[\s\S]*?\b\1\s*\(/i.test(code);
+        if (isRecursiveFunc) {
+          astScore += 50;
+          evidence.push('AST: Self-referential recursive function call');
         }
 
-        if (ast.semanticTagsFound.has('DP_TABLE') || hasDPStorage) {
-          astScore += 40;
-          evidence.push('AST: 1D/2D DP table memoization storage');
-        }
-
-        if (/dp\[i\]\[j\]|dp\[i\]|memo\[.*\]|knapsack|lcs|lis/i.test(code)) {
-          behaviorScore += 60;
-          evidence.push('Behavior: DP recurrence relation state transition with table storage');
+        if (/if\s+.*<=?\s*\d+:?\s*return|if\s*\(.*<=?\s*\d+\)\s*return/i.test(code) || /return\s+\w+\s*\(.*?\)\s*[\+\-\*\/]/i.test(code)) {
+          behaviorScore += 45;
+          evidence.push('Behavior: Base case return condition and recursive stack unwind');
         }
 
         const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
