@@ -33,8 +33,12 @@ function layoutTree(
   const NODE_X_SPACING = 80;
   const NODE_Y_SPACING = 90;
 
+  const visitedInTraversal = new Set<string>();
+
   function inorderTraverse(nodeId: string | null, depth: number) {
-    if (!nodeId || !nodes[nodeId]) return;
+    if (!nodeId || !nodes[nodeId] || visitedInTraversal.has(nodeId) || depth > 50) return;
+
+    visitedInTraversal.add(nodeId);
 
     const node = nodes[nodeId];
 

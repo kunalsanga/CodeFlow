@@ -6,7 +6,6 @@ import { VisualizerCanvas } from "@/components/visualizer/VisualizerCanvas";
 import { ControlBar } from "@/components/controls/ControlBar";
 import { AICompanionPanel } from "@/components/inspectors/AICompanionPanel";
 import { StepChangesPanel } from "@/components/inspectors/StepChangesPanel";
-import { AlgorithmMetadataPanel } from "@/components/inspectors/AlgorithmMetadataPanel";
 import { MemoryInsightsPanel } from "@/components/inspectors/MemoryInsightsPanel";
 import { VariableInspector } from "@/components/inspectors/VariableInspector";
 import { ConsoleOutput } from "@/components/inspectors/ConsoleOutput";
@@ -21,11 +20,15 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 import { computeFrameDiff } from "@/lib/frameDiffEngine";
 import { analyzeMemoryLayout } from "@/lib/memory/memoryLayoutEngine";
-import { detectorManager } from "@/lib/algorithms/detectorManager";
 import { generateExecutionStory } from "@/lib/learning/narrativeGenerator";
 import { generatePredictionQuestions } from "@/lib/learning/predictionEngine";
 
-import { Code2, BookOpen, HelpCircle, BookMarked, SlidersHorizontal } from "lucide-react";
+import { AlgorithmDetector } from "@/semantic-engine/detectors/AlgorithmDetector";
+import { StepExplainerEngine } from "@codeflow/ai-engine";
+
+import { Code2, BookOpen, HelpCircle, SlidersHorizontal, Sparkles, Cpu, Eye, Layers, Brain, Lightbulb } from "lucide-react";
+
+type ViewMode = "visualizer" | "memory" | "ai";
 
 export default function Home() {
   const { code, setCode, executionPayload, error: executionError } = useExecutionStore();
@@ -34,9 +37,15 @@ export default function Home() {
   const [isPredictionMode, setIsPredictionMode] = useState<boolean>(false);
   const [showAdvancedInspectors, setShowAdvancedInspectors] = useState<boolean>(false);
   const [activeConceptKey, setActiveConceptKey] = useState<"stack" | "heap" | null>(null);
+  const [activeViewMode, setActiveViewMode] = useState<ViewMode>("visualizer");
 
   // Keyboard navigation shortcuts
   useKeyboardShortcuts(() => setIsPredictionMode(prev => !prev));
+
+  // Run Multi-Stage Semantic Engine on current code
+  const semanticDetectionResult = useMemo(() => {
+    return AlgorithmDetector.detect(code, 'python');
+  }, [code]);
 
   const currentStepEvent = useMemo(() => {
     if (!executionPayload || !executionPayload.trace.length) return null;
@@ -57,17 +66,16 @@ export default function Home() {
     return analyzeMemoryLayout(currentStepEvent);
   }, [currentStepEvent]);
 
-  // Algorithm Intelligence Detection
-  const algorithmResult = useMemo(() => {
-    if (!executionPayload || !executionPayload.trace.length) return null;
-    return detectorManager.detectAlgorithm(executionPayload.trace);
-  }, [executionPayload]);
-
   // Execution Narrative Story
   const storySteps = useMemo(() => {
     if (!executionPayload || !executionPayload.trace.length) return [];
     return generateExecutionStory(executionPayload.trace);
   }, [executionPayload]);
+
+  // Educational Step Rationale from AI Engine
+  const stepRationale = useMemo(() => {
+    return StepExplainerEngine.generateRationale(null, currentStepIndex, semanticDetectionResult.algorithmType);
+  }, [currentStepIndex, semanticDetectionResult.algorithmType]);
 
   // Interactive Prediction Questions
   const predictionQuestions = useMemo(() => {
@@ -94,30 +102,65 @@ export default function Home() {
         onClose={() => setActiveConceptKey(null)}
       />
 
-      {/* Clean Minimalist Header Navigation */}
+      {/* Studio Header Navigation */}
       <header className="h-14 bg-[#161b22] border-b border-[#30363d] px-6 flex items-center justify-between shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
-            <Code2 className="w-5 h-5 text-white" />
+          <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg shadow-md flex items-center gap-1">
+            <Cpu className="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-              CodeFlow <span className="text-xs font-semibold px-2.5 py-0.5 bg-blue-900/50 text-[#79c0ff] border border-blue-700/50 rounded-full">
-                {algorithmResult?.algorithmName || "Python Visualizer"}
+              CodeFlow <span className="text-xs font-semibold px-3 py-0.5 bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 rounded-full flex items-center gap-1.5 uppercase tracking-wider">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                Semantic Engine: {semanticDetectionResult.algorithmType} ({(semanticDetectionResult.confidence * 100).toFixed(0)}%)
               </span>
             </h1>
-            <p className="text-[11px] text-gray-400">Interactive Code Execution & Visual Learning Platform</p>
+            <p className="text-[11px] text-gray-400">Language-Independent Execution & Algorithm Teaching Platform</p>
           </div>
         </div>
 
-        {/* Action Controls & Preset Sample Buttons */}
-        <div className="flex items-center gap-3">
+        {/* Studio View Switcher Tabs */}
+        <div className="flex items-center bg-[#0d1117] p-1 rounded-xl border border-[#30363d] gap-1">
+          <button
+            onClick={() => setActiveViewMode("visualizer")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeViewMode === "visualizer"
+                ? "bg-indigo-600 text-white shadow-md"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" /> Graph Visualizer
+          </button>
+          <button
+            onClick={() => setActiveViewMode("memory")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeViewMode === "memory"
+                ? "bg-indigo-600 text-white shadow-md"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" /> Memory (RAM)
+          </button>
+          <button
+            onClick={() => setActiveViewMode("ai")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeViewMode === "ai"
+                ? "bg-indigo-600 text-white shadow-md"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Brain className="w-3.5 h-3.5 text-amber-400" /> AI Rationale
+          </button>
+        </div>
+
+        {/* Action Controls & Sample Code Presets */}
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAdvancedInspectors(!showAdvancedInspectors)}
             aria-label="Toggle Advanced Inspector Panels"
-            className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-all focus:outline-none focus:ring-2 focus:ring-[#58a6ff] ${
+            className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-all focus:outline-none ${
               showAdvancedInspectors
-                ? "bg-blue-950/80 border-[#58a6ff] text-[#79c0ff] ring-2 ring-blue-500/30"
+                ? "bg-blue-950/80 border-[#58a6ff] text-[#79c0ff]"
                 : "bg-[#21262d] border-[#30363d] text-gray-300 hover:text-white"
             }`}
           >
@@ -127,54 +170,37 @@ export default function Home() {
 
           <div className="h-4 w-px bg-[#30363d]" />
 
-          <button
-            onClick={() => setIsPredictionMode(!isPredictionMode)}
-            aria-label="Toggle Prediction Mode"
-            title="Toggle Prediction Mode (P)"
-            className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              isPredictionMode
-                ? "bg-indigo-950/80 border-indigo-500 text-indigo-300 ring-2 ring-indigo-500/40"
-                : "bg-[#21262d] border-[#30363d] text-gray-300 hover:text-white"
-            }`}
-          >
-            <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
-            Prediction: {isPredictionMode ? "ON" : "OFF"}
-          </button>
-
-          <div className="h-4 w-px bg-[#30363d]" />
-
-          {/* Preset Sample Code Buttons */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 flex items-center gap-1">
-              <BookOpen className="w-3.5 h-3.5" /> Samples:
+          {/* Sample Presets */}
+          <div className="flex items-center gap-1 text-xs">
+            <span className="text-gray-400 mr-1 flex items-center gap-1">
+              <BookOpen className="w-3.5 h-3.5" /> Presets:
             </span>
             <button
-              onClick={() => setCode(`def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n\nresult = fibonacci(3)\nprint("Fibonacci:", result)`)}
-              aria-label="Load Fibonacci Recursion Sample"
-              className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+              onClick={() => setCode(`from collections import deque\n\ngraph = {0:[1,2], 1:[3,4], 2:[5], 3:[], 4:[5], 5:[]}\nvisited = set()\nq = deque([0])\nwhile q:\n    node = q.popleft()\n    if node in visited: continue\n    visited.add(node)\n    for nxt in graph[node]:\n        q.append(nxt)`)}
+              className="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-200 font-semibold px-2 py-1 rounded transition-colors"
             >
-              Recursion
+              BFS
             </button>
+
             <button
-              onClick={() => setCode(`numbers = [5, 2, 8, 1, 3]\nfor i in range(len(numbers)):\n    for j in range(0, len(numbers) - i - 1):\n        if numbers[j] > numbers[j + 1]:\n            numbers[j], numbers[j + 1] = numbers[j + 1], numbers[j]\nprint("Sorted:", numbers)`)}
-              aria-label="Load Bubble Sort Sample"
-              className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+              onClick={() => setCode(`graph = {0:[1,2], 1:[3], 2:[4], 3:[], 4:[]}\nvisited = set()\n\ndef dfs(node):\n    if node in visited: return\n    visited.add(node)\n    for nxt in graph[node]:\n        dfs(nxt)\n\ndfs(0)`)}
+              className="bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-200 font-semibold px-2 py-1 rounded transition-colors"
             >
-              Bubble Sort
+              DFS
             </button>
+
             <button
-              onClick={() => setCode(`a = [10, 20, 30]\nb = a\nb.append(40)\nprint("Aliased list:", a)`)}
-              aria-label="Load Reference Aliasing Sample"
-              className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+              onClick={() => setCode(`import heapq\n\ndef dijkstra(graph, start):\n    dist = {node: float('inf') for node in graph}\n    dist[start] = 0\n    pq = [(0, start)]\n    visited = set()\n    while pq:\n        d, u = heapq.heappop(pq)\n        if u in visited: continue\n        visited.add(u)\n        for v, weight in graph[u]:\n            if dist[v] > dist[u] + weight:\n                dist[v] = dist[u] + weight\n                heapq.heappush(pq, (dist[v], v))\n    return dist\n\ngraph = {'A': [('B', 4), ('C', 2)], 'B': [('C', 1), ('D', 5)], 'C': [('D', 8), ('E', 10)], 'D': [('E', 2)], 'E': []}\ndijkstra(graph, 'A')`)}
+              className="bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-200 font-semibold px-2 py-1 rounded transition-colors"
             >
-              Aliasing (Heap RAM)
+              Dijkstra
             </button>
+
             <button
-              onClick={() => setCode(`class Node:\n    def __init__(self, value):\n        self.value = value\n        self.left = None\n        self.right = None\n\ndef insert(root, value):\n    if root is None:\n        return Node(value)\n\n    if value < root.value:\n        root.left = insert(root.left, value)\n    else:\n        root.right = insert(root.right, value)\n\n    return root\n\nroot = None\nfor v in [50, 30, 70, 20, 40, 60, 80]:\n    root = insert(root, v)\nprint("BST built")`)}
-              aria-label="Load BST Sample"
-              className="text-xs bg-[#21262d] hover:bg-[#30363d] focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-300 px-2.5 py-1 rounded border border-[#30363d] transition-colors"
+              onClick={() => setCode(`def merge_sort(arr):\n    if len(arr) <= 1: return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    return merge(left, right)\n\ndef merge(left, right):\n    res, i, j = [], 0, 0\n    while i < len(left) and j < len(right):\n        if left[i] < right[j]: res.append(left[i]); i += 1\n        else: res.append(right[j]); j += 1\n    res.extend(left[i:]); res.extend(right[j:])\n    return res\n\nmerge_sort([38, 27, 43, 3, 9, 82, 10])`)}
+              className="bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-200 font-semibold px-2 py-1 rounded transition-colors"
             >
-              BST
+              Merge Sort
             </button>
           </div>
         </div>
@@ -183,19 +209,41 @@ export default function Home() {
       {/* Main Workspace Split View */}
       <main className="flex-1 grid grid-cols-12 overflow-hidden">
         {/* Left Column: Code Editor */}
-        <div className={`${showAdvancedInspectors ? "col-span-4" : "col-span-5"} h-full border-r border-[#30363d] overflow-hidden transition-all`}>
+        <div className={`${showAdvancedInspectors ? "col-span-4" : "col-span-5"} h-full border-r border-[#30363d] overflow-hidden transition-all flex flex-col justify-between`}>
           <CodeEditor activeLineNumber={activeLineNumber} />
+
+          {/* AI Educational Step Rationale Banner */}
+          <div className="p-3 bg-slate-900 border-t border-[#30363d] font-mono text-xs text-slate-300 flex items-start gap-2.5 shadow-inner">
+            <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-amber-300">{stepRationale.reason}</div>
+              <div className="text-slate-400 mt-0.5">{stepRationale.explanation}</div>
+              {stepRationale.hint && (
+                <div className="text-indigo-400 mt-1 italic">💡 Hint: {stepRationale.hint}</div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Center Column: Adaptive Visualizer Canvas */}
+        {/* Center Column: Adaptive Canvas Mode */}
         <div className={`${showAdvancedInspectors ? "col-span-5" : "col-span-7"} h-full border-r border-[#30363d] overflow-hidden relative transition-all`}>
-          <VisualizerCanvas
-            currentStepEvent={currentStepEvent}
-            previousStepEvent={previousStepEvent}
-            allTraceEvents={executionPayload?.trace || []}
-            currentStepIndex={currentStepIndex}
-            mode={algorithmResult?.mode}
-          />
+          {activeViewMode === "ai" ? (
+            <div className="h-full w-full bg-[#0d1117] p-6 overflow-y-auto">
+              <AICompanionPanel
+                currentStepEvent={currentStepEvent}
+                codeSnippet={currentCodeSnippet}
+              />
+            </div>
+          ) : (
+            <VisualizerCanvas
+              currentStepEvent={currentStepEvent}
+              previousStepEvent={previousStepEvent}
+              allTraceEvents={executionPayload?.trace || []}
+              currentStepIndex={currentStepIndex}
+              detectedAlgorithm={activeViewMode === "memory" ? "generic-memory" : semanticDetectionResult.algorithmType}
+              code={code}
+            />
+          )}
 
           {/* Interactive Prediction Modal Overlay */}
           {isPredictionMode && activePrediction && (
@@ -208,7 +256,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* Right Column: Detail Inspectors (Only visible when toggled) */}
+        {/* Right Column: Detail Inspectors */}
         {showAdvancedInspectors && (
           <div className="col-span-3 h-full bg-[#0d1117] p-4 flex flex-col gap-3 overflow-y-auto border-l border-[#30363d]">
             <MemoryInsightsPanel memoryAnalysis={memoryAnalysis} />
@@ -216,12 +264,7 @@ export default function Home() {
               storySteps={storySteps}
               currentStepIndex={currentStepIndex}
             />
-            <AlgorithmMetadataPanel algorithmResult={algorithmResult} />
             <StepChangesPanel diffResult={diffResult} />
-            <AICompanionPanel
-              currentStepEvent={currentStepEvent}
-              codeSnippet={currentCodeSnippet}
-            />
             <VariableInspector currentStepEvent={currentStepEvent} />
             <ConsoleOutput
               stdout={executionPayload?.stdout || currentStepEvent?.stdout || ""}

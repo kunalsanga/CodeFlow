@@ -19,9 +19,16 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@codeflow/types": ["../../packages/types/src/index.ts"],
+      "@codeflow/execution-engine": ["../../packages/execution-engine/src/traceInterpreter.ts"],
+      "@codeflow/semantic-engine": ["../../packages/semantic-engine/src/knowledgeGraph.ts"],
+      "@codeflow/layout-engine": ["../../packages/layout-engine/src/treeLayout.ts"],
+      "@codeflow/animation-engine": ["../../packages/animation-engine/src/springs.ts"],
+      "@codeflow/plugin-registry": ["../../packages/plugin-registry/src/registry.ts"],
+      "@codeflow/ai-engine": ["../../packages/ai-engine/src/stepExplainer.ts"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../../packages/**/*.ts"],
   "exclude": ["node_modules"]
 }
