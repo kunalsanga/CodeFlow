@@ -24,6 +24,7 @@ import {
   UnionFindRenderer,
   SegmentTreeRenderer,
   LRUCacheRenderer,
+  LinkedListRenderer,
 } from "@/semantic-engine/renderers";
 import { ISemanticIR } from "@/types/semantic/ir";
 
@@ -111,6 +112,10 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
 
   if (detectedAlgorithm === "lru-cache") {
     return <LRUCacheRenderer semanticIR={semanticIR} />;
+  }
+
+  if (detectedAlgorithm === "linked-list") {
+    return <LinkedListRenderer semanticIR={semanticIR} />;
   }
 
   // BST / Tree mode

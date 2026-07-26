@@ -13,6 +13,37 @@ interface IDSAEvaluator {
 
 export class AlgorithmDetector {
   private static evaluators: IDSAEvaluator[] = [
+    // Linked List Evaluator (Singly / Doubly Linked List) - High Priority
+    {
+      name: 'linked-list',
+      suggestedRenderer: 'linked-list-renderer',
+      evaluate(ast, code) {
+        let astScore = 0;
+        let traceScore = 0;
+        let graphScore = 0;
+        let behaviorScore = 0;
+        const evidence: string[] = [];
+
+        if (/struct\s+Node|class\s+Node|Node\*|next\b|prev\b|head\b|tail\b|LinkedList/i.test(code)) {
+          astScore += 45;
+          evidence.push('AST: Node class/struct with next/prev pointers & LinkedList structure');
+        }
+
+        if (/insert|insertFront|deleteNode|delete|reverse|display|search/i.test(code) && /head|next|Node/i.test(code)) {
+          behaviorScore += 45;
+          evidence.push('Behavior: Linked list insertion, deletion, reversal, and pointer traversal');
+        }
+
+        if (/LinkedList\s+\w+|head\s*=\s*new\s+Node|curr->next|temp->next/i.test(code)) {
+          graphScore += 10;
+          evidence.push('Graph Topology: Sequential pointer chaining');
+        }
+
+        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
+        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
+      },
+    },
+
     // Recursion Call Stack Evaluator
     {
       name: 'recursion',
@@ -35,7 +66,6 @@ export class AlgorithmDetector {
           evidence.push('Behavior: Base case return condition and recursive stack unwind');
         }
 
-        // Guard: If plain recursive code without DP memoization, ensure high confidence for recursion
         if (isRecursiveFunc && !/dp\[|memo\[|@lru_cache/i.test(code)) {
           astScore += 5;
         }
@@ -219,7 +249,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // Dynamic Programming Evaluator (Requires Memoization or DP Table)
+    // Dynamic Programming Evaluator (Requires explicit DP table/vector/memo storage)
     {
       name: 'dynamic-programming',
       suggestedRenderer: 'dp-renderer',
@@ -230,11 +260,18 @@ export class AlgorithmDetector {
         let behaviorScore = 0;
         const evidence: string[] = [];
 
-        if (ast.semanticTagsFound.has('DP_TABLE')) {
+        // Strict Guard: If code does NOT have dp[] or memo[] or vector<vector<int>> dp, DP score is 0
+        const hasDPStorage = /vector\s*<\s*vector\s*<\s*int\s*>\s*>\s*dp|vector\s*<\s*int\s*>\s*dp|\bdp\s*\[|\bmemo\s*\[|@lru_cache/i.test(code);
+        if (!hasDPStorage) {
+          return { confidence: 0, evidence: [], stageScores: { astScore: 0, traceScore: 0, graphScore: 0, behaviorScore: 0 } };
+        }
+
+        if (ast.semanticTagsFound.has('DP_TABLE') || hasDPStorage) {
           astScore += 40;
           evidence.push('AST: 1D/2D DP table memoization storage');
         }
-        if (/dp\[i\]\[j\]|dp\[i\]|memo\[.*\]|@lru_cache|knapsack|lcs|lis/i.test(code)) {
+
+        if (/dp\[i\]\[j\]|dp\[i\]|memo\[.*\]|knapsack|lcs|lis/i.test(code)) {
           behaviorScore += 60;
           evidence.push('Behavior: DP recurrence relation state transition with table storage');
         }
