@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { VisualizerCanvas } from "@/components/visualizer/VisualizerCanvas";
 import { ControlBar } from "@/components/controls/ControlBar";
@@ -27,40 +27,12 @@ import { AlgorithmDetector } from "@/semantic-engine/detectors/AlgorithmDetector
 import { StepExplainerEngine } from "@codeflow/ai-engine";
 import { LanguageDetector } from "@codeflow/language-adapters";
 
-import { Code2, BookOpen, HelpCircle, SlidersHorizontal, Sparkles, Cpu, Eye, Layers, Brain, Lightbulb } from "lucide-react";
+import { SlidersHorizontal, Sparkles, Cpu, Eye, Layers, Brain, Lightbulb } from "lucide-react";
 
 type ViewMode = "visualizer" | "memory" | "ai";
 
-const DEFAULT_DIJKSTRA_EXAMPLE = `import heapq
-
-def dijkstra(graph, start):
-    dist = {node: float('inf') for node in graph}
-    dist[start] = 0
-    pq = [(0, start)]
-    visited = set()
-    
-    while pq:
-        d, u = heapq.heappop(pq)
-        if u in visited: continue
-        visited.add(u)
-        
-        for v, weight in graph[u]:
-            if dist[v] > dist[u] + weight:
-                dist[v] = dist[u] + weight
-                heapq.heappush(pq, (dist[v], v))
-    return dist
-
-graph = {
-    'A': [('B', 4), ('C', 2)],
-    'B': [('C', 1), ('D', 5)],
-    'C': [('D', 8), ('E', 10)],
-    'D': [('E', 2)],
-    'E': []
-}
-dijkstra(graph, 'A')`;
-
 export default function Home() {
-  const { code, setCode, executeCode, executionPayload, isExecuting, error: executionError } = useExecutionStore();
+  const { code, executionPayload, error: executionError } = useExecutionStore();
   const { currentStepIndex, stepNext } = usePlaybackStore();
 
   const [isPredictionMode, setIsPredictionMode] = useState<boolean>(false);
@@ -71,20 +43,19 @@ export default function Home() {
   // Keyboard navigation shortcuts
   useKeyboardShortcuts(() => setIsPredictionMode(prev => !prev));
 
-  // Initialize with Default Featured Example on load
-  useEffect(() => {
-    executeCode(code || DEFAULT_DIJKSTRA_EXAMPLE);
-  }, []);
+  const hasCode = code && code.trim() !== "";
 
   // Automatic Language Detection Subsystem
   const autoLanguage = useMemo(() => {
+    if (!hasCode) return null;
     return LanguageDetector.detectLanguage(code);
-  }, [code]);
+  }, [code, hasCode]);
 
   // Run Multi-Stage Semantic Engine on current code
   const semanticDetectionResult = useMemo(() => {
+    if (!hasCode || !autoLanguage) return null;
     return AlgorithmDetector.detect(code, autoLanguage.language);
-  }, [code, autoLanguage.language]);
+  }, [code, hasCode, autoLanguage]);
 
   const currentStepEvent = useMemo(() => {
     if (!executionPayload || !executionPayload.trace.length) return null;
@@ -113,8 +84,9 @@ export default function Home() {
 
   // Educational Step Rationale from AI Engine
   const stepRationale = useMemo(() => {
-    return StepExplainerEngine.generateRationale(null, currentStepIndex, semanticDetectionResult.algorithmType);
-  }, [currentStepIndex, semanticDetectionResult.algorithmType]);
+    const algoType = semanticDetectionResult?.algorithmType || 'code';
+    return StepExplainerEngine.generateRationale(null, currentStepIndex, algoType);
+  }, [currentStepIndex, semanticDetectionResult]);
 
   // Interactive Prediction Questions
   const predictionQuestions = useMemo(() => {
@@ -128,16 +100,10 @@ export default function Home() {
 
   const activeLineNumber = currentStepEvent?.line_number;
   const currentCodeSnippet = useMemo(() => {
-    if (!activeLineNumber) return "";
+    if (!activeLineNumber || !hasCode) return "";
     const lines = code.split("\n");
     return lines[activeLineNumber - 1] || "";
-  }, [code, activeLineNumber]);
-
-  // Helper to load gallery preset and auto-run
-  const loadGalleryPreset = (presetCode: string) => {
-    setCode(presetCode);
-    executeCode(presetCode);
-  };
+  }, [code, activeLineNumber, hasCode]);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#0d1117]">
@@ -147,7 +113,7 @@ export default function Home() {
         onClose={() => setActiveConceptKey(null)}
       />
 
-      {/* Studio Header Navigation */}
+      {/* Clean IDE Top Navigation Header */}
       <header className="h-14 bg-[#161b22] border-b border-[#30363d] px-6 flex items-center justify-between shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg shadow-md flex items-center gap-1">
@@ -155,16 +121,19 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-              CodeFlow <span className="text-xs font-semibold px-2.5 py-0.5 bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 rounded-full flex items-center gap-1 uppercase tracking-wider">
-                <Sparkles className="w-3 h-3 text-amber-400" />
-                {autoLanguage.language.toUpperCase()} | {semanticDetectionResult.algorithmType} ({(semanticDetectionResult.confidence * 100).toFixed(0)}%)
-              </span>
+              CodeFlow
+              {hasCode && autoLanguage && semanticDetectionResult && (
+                <span className="text-xs font-semibold px-2.5 py-0.5 bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 rounded-full flex items-center gap-1 uppercase tracking-wider">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  Detected: {autoLanguage.language.toUpperCase()} | {semanticDetectionResult.algorithmType} ({(semanticDetectionResult.confidence * 100).toFixed(0)}%)
+                </span>
+              )}
             </h1>
-            <p className="text-[11px] text-gray-400">Language-Independent Code Execution & Algorithm Platform</p>
+            <p className="text-[11px] text-gray-400">Language-Independent Code Execution & Visualization Platform</p>
           </div>
         </div>
 
-        {/* Studio View Switcher Tabs */}
+        {/* View Switcher Tabs */}
         <div className="flex items-center bg-[#0d1117] p-1 rounded-xl border border-[#30363d] gap-1">
           <button
             onClick={() => setActiveViewMode("visualizer")}
@@ -198,7 +167,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Curated Gallery & Action Controls */}
+        {/* Action Controls */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAdvancedInspectors(!showAdvancedInspectors)}
@@ -212,57 +181,6 @@ export default function Home() {
             <SlidersHorizontal className="w-3.5 h-3.5 text-[#58a6ff]" />
             {showAdvancedInspectors ? "Hide Details" : "Show Details"}
           </button>
-
-          <div className="h-4 w-px bg-[#30363d]" />
-
-          {/* Curated Example Gallery Bar */}
-          <div className="flex items-center gap-1 text-xs">
-            <span className="text-gray-400 mr-1 flex items-center gap-1">
-              <BookOpen className="w-3.5 h-3.5" /> Gallery:
-            </span>
-
-            <button
-              onClick={() => loadGalleryPreset(DEFAULT_DIJKSTRA_EXAMPLE)}
-              className="bg-indigo-950/90 hover:bg-indigo-900 border border-indigo-500/70 text-indigo-200 font-bold px-2 py-1 rounded transition-colors flex items-center gap-1"
-            >
-              ⭐ Dijkstra
-            </button>
-
-            <button
-              onClick={() => loadGalleryPreset(`from collections import deque\n\ngraph = {0:[1,2], 1:[3,4], 2:[5], 3:[], 4:[5], 5:[]}\nvisited = set()\nq = deque([0])\nwhile q:\n    node = q.popleft()\n    if node in visited: continue\n    visited.add(node)\n    for nxt in graph[node]:\n        q.append(nxt)`)}
-              className="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-200 font-semibold px-2 py-1 rounded transition-colors"
-            >
-              BFS
-            </button>
-
-            <button
-              onClick={() => loadGalleryPreset(`graph = {0:[1,2], 1:[3], 2:[4], 3:[], 4:[]}\nvisited = set()\n\ndef dfs(node):\n    if node in visited: return\n    visited.add(node)\n    for nxt in graph[node]:\n        dfs(nxt)\n\ndfs(0)`)}
-              className="bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-200 font-semibold px-2 py-1 rounded transition-colors"
-            >
-              DFS
-            </button>
-
-            <button
-              onClick={() => loadGalleryPreset(`def fibonacci(n):\n    if n <= 1: return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n\nfibonacci(4)`)}
-              className="bg-amber-950/80 hover:bg-amber-900 border border-amber-700/60 text-amber-200 font-semibold px-2 py-1 rounded transition-colors"
-            >
-              Recursion
-            </button>
-
-            <button
-              onClick={() => loadGalleryPreset(`def merge_sort(arr):\n    if len(arr) <= 1: return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    return merge(left, right)\n\ndef merge(left, right):\n    res, i, j = [], 0, 0\n    while i < len(left) and j < len(right):\n        if left[i] < right[j]: res.append(left[i]); i += 1\n        else: res.append(right[j]); j += 1\n    res.extend(left[i:]); res.extend(right[j:])\n    return res\n\nmerge_sort([38, 27, 43, 3, 9, 82, 10])`)}
-              className="bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-200 font-semibold px-2 py-1 rounded transition-colors"
-            >
-              Merge Sort
-            </button>
-
-            <button
-              onClick={() => loadGalleryPreset(`def fib_dp(n):\n    dp = [0] * (n + 1)\n    dp[1] = 1\n    for i in range(2, n + 1):\n        dp[i] = dp[i-1] + dp[i-2]\n    return dp[n]\n\nfib_dp(6)`)}
-              className="bg-teal-950/80 hover:bg-teal-900 border border-teal-700/60 text-teal-200 font-semibold px-2 py-1 rounded transition-colors"
-            >
-              DP Tabulation
-            </button>
-          </div>
         </div>
       </header>
 
@@ -273,16 +191,18 @@ export default function Home() {
           <CodeEditor activeLineNumber={activeLineNumber} />
 
           {/* AI Educational Step Rationale Banner */}
-          <div className="p-3 bg-slate-900 border-t border-[#30363d] font-mono text-xs text-slate-300 flex items-start gap-2.5 shadow-inner">
-            <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <div className="font-bold text-amber-300">{stepRationale.reason}</div>
-              <div className="text-slate-400 mt-0.5">{stepRationale.explanation}</div>
-              {stepRationale.hint && (
-                <div className="text-indigo-400 mt-1 italic">💡 Hint: {stepRationale.hint}</div>
-              )}
+          {hasCode && (
+            <div className="p-3 bg-slate-900 border-t border-[#30363d] font-mono text-xs text-slate-300 flex items-start gap-2.5 shadow-inner">
+              <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold text-amber-300">{stepRationale.reason}</div>
+                <div className="text-slate-400 mt-0.5">{stepRationale.explanation}</div>
+                {stepRationale.hint && (
+                  <div className="text-indigo-400 mt-1 italic">💡 Hint: {stepRationale.hint}</div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Center Column: Adaptive Canvas Mode */}
@@ -300,7 +220,7 @@ export default function Home() {
               previousStepEvent={previousStepEvent}
               allTraceEvents={executionPayload?.trace || []}
               currentStepIndex={currentStepIndex}
-              detectedAlgorithm={activeViewMode === "memory" ? "generic-memory" : semanticDetectionResult.algorithmType}
+              detectedAlgorithm={activeViewMode === "memory" ? "generic-memory" : (semanticDetectionResult?.algorithmType || "generic-memory")}
               code={code}
             />
           )}
