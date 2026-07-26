@@ -64,7 +64,7 @@ export const ControlBar: React.FC = () => {
     <div className="bg-[#161b22] border-t border-[#30363d] px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-4 z-20 shadow-lg">
       {/* Left: Execution Trigger */}
       <button
-        onClick={executeCode}
+        onClick={() => executeCode()}
         disabled={isExecuting}
         aria-label="Visualize Code Execution"
         className="flex items-center gap-2 bg-[#238636] hover:bg-[#2ea043] focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 text-white font-medium text-sm px-4 py-2 rounded-md transition-colors shadow-sm"

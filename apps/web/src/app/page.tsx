@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { VisualizerCanvas } from "@/components/visualizer/VisualizerCanvas";
 import { ControlBar } from "@/components/controls/ControlBar";
@@ -25,13 +25,42 @@ import { generatePredictionQuestions } from "@/lib/learning/predictionEngine";
 
 import { AlgorithmDetector } from "@/semantic-engine/detectors/AlgorithmDetector";
 import { StepExplainerEngine } from "@codeflow/ai-engine";
+import { LanguageDetector } from "@codeflow/language-adapters";
 
 import { Code2, BookOpen, HelpCircle, SlidersHorizontal, Sparkles, Cpu, Eye, Layers, Brain, Lightbulb } from "lucide-react";
 
 type ViewMode = "visualizer" | "memory" | "ai";
 
+const DEFAULT_DIJKSTRA_EXAMPLE = `import heapq
+
+def dijkstra(graph, start):
+    dist = {node: float('inf') for node in graph}
+    dist[start] = 0
+    pq = [(0, start)]
+    visited = set()
+    
+    while pq:
+        d, u = heapq.heappop(pq)
+        if u in visited: continue
+        visited.add(u)
+        
+        for v, weight in graph[u]:
+            if dist[v] > dist[u] + weight:
+                dist[v] = dist[u] + weight
+                heapq.heappush(pq, (dist[v], v))
+    return dist
+
+graph = {
+    'A': [('B', 4), ('C', 2)],
+    'B': [('C', 1), ('D', 5)],
+    'C': [('D', 8), ('E', 10)],
+    'D': [('E', 2)],
+    'E': []
+}
+dijkstra(graph, 'A')`;
+
 export default function Home() {
-  const { code, setCode, executionPayload, error: executionError } = useExecutionStore();
+  const { code, setCode, executeCode, executionPayload, isExecuting, error: executionError } = useExecutionStore();
   const { currentStepIndex, stepNext } = usePlaybackStore();
 
   const [isPredictionMode, setIsPredictionMode] = useState<boolean>(false);
@@ -42,10 +71,20 @@ export default function Home() {
   // Keyboard navigation shortcuts
   useKeyboardShortcuts(() => setIsPredictionMode(prev => !prev));
 
+  // Initialize with Default Featured Example on load
+  useEffect(() => {
+    executeCode(code || DEFAULT_DIJKSTRA_EXAMPLE);
+  }, []);
+
+  // Automatic Language Detection Subsystem
+  const autoLanguage = useMemo(() => {
+    return LanguageDetector.detectLanguage(code);
+  }, [code]);
+
   // Run Multi-Stage Semantic Engine on current code
   const semanticDetectionResult = useMemo(() => {
-    return AlgorithmDetector.detect(code, 'python');
-  }, [code]);
+    return AlgorithmDetector.detect(code, autoLanguage.language);
+  }, [code, autoLanguage.language]);
 
   const currentStepEvent = useMemo(() => {
     if (!executionPayload || !executionPayload.trace.length) return null;
@@ -94,6 +133,12 @@ export default function Home() {
     return lines[activeLineNumber - 1] || "";
   }, [code, activeLineNumber]);
 
+  // Helper to load gallery preset and auto-run
+  const loadGalleryPreset = (presetCode: string) => {
+    setCode(presetCode);
+    executeCode(presetCode);
+  };
+
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#0d1117]">
       {/* Concept Card Modal */}
@@ -110,12 +155,12 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-              CodeFlow <span className="text-xs font-semibold px-3 py-0.5 bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 rounded-full flex items-center gap-1.5 uppercase tracking-wider">
+              CodeFlow <span className="text-xs font-semibold px-2.5 py-0.5 bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 rounded-full flex items-center gap-1 uppercase tracking-wider">
                 <Sparkles className="w-3 h-3 text-amber-400" />
-                Semantic Engine: {semanticDetectionResult.algorithmType} ({(semanticDetectionResult.confidence * 100).toFixed(0)}%)
+                {autoLanguage.language.toUpperCase()} | {semanticDetectionResult.algorithmType} ({(semanticDetectionResult.confidence * 100).toFixed(0)}%)
               </span>
             </h1>
-            <p className="text-[11px] text-gray-400">Language-Independent Execution & Algorithm Teaching Platform</p>
+            <p className="text-[11px] text-gray-400">Language-Independent Code Execution & Algorithm Platform</p>
           </div>
         </div>
 
@@ -153,7 +198,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Action Controls & Sample Code Presets */}
+        {/* Curated Gallery & Action Controls */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAdvancedInspectors(!showAdvancedInspectors)}
@@ -170,37 +215,52 @@ export default function Home() {
 
           <div className="h-4 w-px bg-[#30363d]" />
 
-          {/* Sample Presets */}
+          {/* Curated Example Gallery Bar */}
           <div className="flex items-center gap-1 text-xs">
             <span className="text-gray-400 mr-1 flex items-center gap-1">
-              <BookOpen className="w-3.5 h-3.5" /> Presets:
+              <BookOpen className="w-3.5 h-3.5" /> Gallery:
             </span>
+
             <button
-              onClick={() => setCode(`from collections import deque\n\ngraph = {0:[1,2], 1:[3,4], 2:[5], 3:[], 4:[5], 5:[]}\nvisited = set()\nq = deque([0])\nwhile q:\n    node = q.popleft()\n    if node in visited: continue\n    visited.add(node)\n    for nxt in graph[node]:\n        q.append(nxt)`)}
+              onClick={() => loadGalleryPreset(DEFAULT_DIJKSTRA_EXAMPLE)}
+              className="bg-indigo-950/90 hover:bg-indigo-900 border border-indigo-500/70 text-indigo-200 font-bold px-2 py-1 rounded transition-colors flex items-center gap-1"
+            >
+              ⭐ Dijkstra
+            </button>
+
+            <button
+              onClick={() => loadGalleryPreset(`from collections import deque\n\ngraph = {0:[1,2], 1:[3,4], 2:[5], 3:[], 4:[5], 5:[]}\nvisited = set()\nq = deque([0])\nwhile q:\n    node = q.popleft()\n    if node in visited: continue\n    visited.add(node)\n    for nxt in graph[node]:\n        q.append(nxt)`)}
               className="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-200 font-semibold px-2 py-1 rounded transition-colors"
             >
               BFS
             </button>
 
             <button
-              onClick={() => setCode(`graph = {0:[1,2], 1:[3], 2:[4], 3:[], 4:[]}\nvisited = set()\n\ndef dfs(node):\n    if node in visited: return\n    visited.add(node)\n    for nxt in graph[node]:\n        dfs(nxt)\n\ndfs(0)`)}
+              onClick={() => loadGalleryPreset(`graph = {0:[1,2], 1:[3], 2:[4], 3:[], 4:[]}\nvisited = set()\n\ndef dfs(node):\n    if node in visited: return\n    visited.add(node)\n    for nxt in graph[node]:\n        dfs(nxt)\n\ndfs(0)`)}
               className="bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-200 font-semibold px-2 py-1 rounded transition-colors"
             >
               DFS
             </button>
 
             <button
-              onClick={() => setCode(`import heapq\n\ndef dijkstra(graph, start):\n    dist = {node: float('inf') for node in graph}\n    dist[start] = 0\n    pq = [(0, start)]\n    visited = set()\n    while pq:\n        d, u = heapq.heappop(pq)\n        if u in visited: continue\n        visited.add(u)\n        for v, weight in graph[u]:\n            if dist[v] > dist[u] + weight:\n                dist[v] = dist[u] + weight\n                heapq.heappush(pq, (dist[v], v))\n    return dist\n\ngraph = {'A': [('B', 4), ('C', 2)], 'B': [('C', 1), ('D', 5)], 'C': [('D', 8), ('E', 10)], 'D': [('E', 2)], 'E': []}\ndijkstra(graph, 'A')`)}
-              className="bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-200 font-semibold px-2 py-1 rounded transition-colors"
+              onClick={() => loadGalleryPreset(`def fibonacci(n):\n    if n <= 1: return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n\nfibonacci(4)`)}
+              className="bg-amber-950/80 hover:bg-amber-900 border border-amber-700/60 text-amber-200 font-semibold px-2 py-1 rounded transition-colors"
             >
-              Dijkstra
+              Recursion
             </button>
 
             <button
-              onClick={() => setCode(`def merge_sort(arr):\n    if len(arr) <= 1: return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    return merge(left, right)\n\ndef merge(left, right):\n    res, i, j = [], 0, 0\n    while i < len(left) and j < len(right):\n        if left[i] < right[j]: res.append(left[i]); i += 1\n        else: res.append(right[j]); j += 1\n    res.extend(left[i:]); res.extend(right[j:])\n    return res\n\nmerge_sort([38, 27, 43, 3, 9, 82, 10])`)}
+              onClick={() => loadGalleryPreset(`def merge_sort(arr):\n    if len(arr) <= 1: return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    return merge(left, right)\n\ndef merge(left, right):\n    res, i, j = [], 0, 0\n    while i < len(left) and j < len(right):\n        if left[i] < right[j]: res.append(left[i]); i += 1\n        else: res.append(right[j]); j += 1\n    res.extend(left[i:]); res.extend(right[j:])\n    return res\n\nmerge_sort([38, 27, 43, 3, 9, 82, 10])`)}
               className="bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-200 font-semibold px-2 py-1 rounded transition-colors"
             >
               Merge Sort
+            </button>
+
+            <button
+              onClick={() => loadGalleryPreset(`def fib_dp(n):\n    dp = [0] * (n + 1)\n    dp[1] = 1\n    for i in range(2, n + 1):\n        dp[i] = dp[i-1] + dp[i-2]\n    return dp[n]\n\nfib_dp(6)`)}
+              className="bg-teal-950/80 hover:bg-teal-900 border border-teal-700/60 text-teal-200 font-semibold px-2 py-1 rounded transition-colors"
+            >
+              DP Tabulation
             </button>
           </div>
         </div>

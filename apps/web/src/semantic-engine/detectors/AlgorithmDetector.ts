@@ -13,6 +13,38 @@ interface IDSAEvaluator {
 
 export class AlgorithmDetector {
   private static evaluators: IDSAEvaluator[] = [
+    // Recursion Call Stack Evaluator
+    {
+      name: 'recursion',
+      suggestedRenderer: 'recursion-renderer',
+      evaluate(ast, code) {
+        let astScore = 0;
+        let traceScore = 0;
+        let graphScore = 0;
+        let behaviorScore = 0;
+        const evidence: string[] = [];
+
+        const isRecursiveFunc = ast.semanticTagsFound.has('RECURSION') || /def\s+(\w+)[\s\S]*?\b\1\s*\(/i.test(code) || /function\s+(\w+)[\s\S]*?\b\1\s*\(/i.test(code);
+        if (isRecursiveFunc) {
+          astScore += 50;
+          evidence.push('AST: Self-referential recursive function call');
+        }
+
+        if (/if\s+.*<=?\s*\d+:?\s*return|if\s*\(.*<=?\s*\d+\)\s*return/i.test(code) || /return\s+\w+\s*\(.*?\)\s*[\+\-\*\/]/i.test(code)) {
+          behaviorScore += 45;
+          evidence.push('Behavior: Base case return condition and recursive stack unwind');
+        }
+
+        // Guard: If plain recursive code without DP memoization, ensure high confidence for recursion
+        if (isRecursiveFunc && !/dp\[|memo\[|@lru_cache/i.test(code)) {
+          astScore += 5;
+        }
+
+        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
+        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
+      },
+    },
+
     // BFS (Breadth-First Search) Evaluator
     {
       name: 'bfs',
@@ -53,7 +85,7 @@ export class AlgorithmDetector {
         let behaviorScore = 0;
         const evidence: string[] = [];
 
-        if (ast.semanticTagsFound.has('RECURSION') || /def\s+dfs|function\s+dfs|void\s+dfs/i.test(code)) {
+        if (/def\s+dfs|function\s+dfs|void\s+dfs/i.test(code)) {
           astScore += 35;
           evidence.push('AST: Recursive function definition for DFS');
         }
@@ -115,7 +147,7 @@ export class AlgorithmDetector {
         let behaviorScore = 0;
         const evidence: string[] = [];
 
-        if (ast.semanticTagsFound.has('RECURSION') || /merge_sort|mergeSort/i.test(code)) {
+        if (/merge_sort|mergeSort/i.test(code)) {
           astScore += 30;
           evidence.push('AST: Recursive divide-and-conquer function');
         }
@@ -144,7 +176,7 @@ export class AlgorithmDetector {
         let behaviorScore = 0;
         const evidence: string[] = [];
 
-        if (ast.semanticTagsFound.has('RECURSION') || /quick_sort|quickSort/i.test(code)) {
+        if (/quick_sort|quickSort/i.test(code)) {
           astScore += 30;
           evidence.push('AST: Recursive partition calls');
         }
@@ -187,7 +219,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // Dynamic Programming Evaluator
+    // Dynamic Programming Evaluator (Requires Memoization or DP Table)
     {
       name: 'dynamic-programming',
       suggestedRenderer: 'dp-renderer',
@@ -202,9 +234,9 @@ export class AlgorithmDetector {
           astScore += 40;
           evidence.push('AST: 1D/2D DP table memoization storage');
         }
-        if (/dp\[i\]\[j\]|memo\[.*\]|knapsack|fibonacci|lcs|lis/i.test(code)) {
+        if (/dp\[i\]\[j\]|dp\[i\]|memo\[.*\]|@lru_cache|knapsack|lcs|lis/i.test(code)) {
           behaviorScore += 60;
-          evidence.push('Behavior: DP recurrence relation state transition');
+          evidence.push('Behavior: DP recurrence relation state transition with table storage');
         }
 
         const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
@@ -212,7 +244,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // Binary Search Tree Evaluator (Guarded against false positives)
+    // Binary Search Tree Evaluator
     {
       name: 'binary-search-tree',
       suggestedRenderer: 'bst-renderer',
