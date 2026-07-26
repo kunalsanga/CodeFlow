@@ -31,36 +31,36 @@ export const LinkedListRenderer: React.FC<LinkedListProps> = ({ semanticIR }) =>
   const currentState = listStates[stateIndex] || listStates[0];
 
   return (
-    <div key={`linked-list-step-${currentStep}`} className="flex flex-col gap-6 p-6 bg-slate-950 text-white rounded-xl border border-slate-800 shadow-2xl w-full">
+    <div key={`linked-list-step-${currentStep}`} className="flex flex-col gap-6 p-6 bg-[#161b22] text-[#e6edf3] rounded-xl border border-[#30363d] shadow-2xl w-full">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div className="flex items-center justify-between border-b border-[#30363d] pb-4">
         <div>
-          <span className="bg-emerald-600/30 text-emerald-400 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-500/30 uppercase tracking-wider">
-            Semantic Engine Visualizer (98% Confidence)
+          <span className="bg-[#3fb950]/20 text-[#3fb950] text-xs font-semibold px-3 py-1 rounded-full border border-[#3fb950]/30 uppercase tracking-wider">
+            Semantic Visualizer (98% Confidence)
           </span>
           <h2 className="text-2xl font-bold mt-1 text-white">Singly Linked List Structure</h2>
         </div>
-        <div className="text-right font-mono text-xs text-slate-400">
-          <div>Active Operation: <span className="text-emerald-400 font-bold">{currentState.op}</span></div>
-          <div>Step Position: <span className="text-cyan-400 font-bold">{currentStep + 1} / {semanticIR.metadata.totalSteps || listStates.length}</span></div>
+        <div className="text-right font-mono text-xs text-[#8b949e]">
+          <div>Active Operation: <span className="text-[#58a6ff] font-bold">{currentState.op}</span></div>
+          <div>Step Position: <span className="text-[#3fb950] font-bold">{currentStep + 1} / {semanticIR.metadata.totalSteps || listStates.length}</span></div>
         </div>
       </div>
 
-      {/* Dynamic Linked List Node Chain with Colored Reversal Pointers */}
-      <div className="bg-slate-900/60 p-8 rounded-xl border border-slate-800 flex flex-col items-center gap-6 min-h-[250px] justify-center overflow-x-auto relative">
+      {/* Dynamic Linked List Node Chain with VALUE | NEXT Sections & Colored Reversal Pointers */}
+      <div className="bg-[#0d1117] p-8 rounded-xl border border-[#30363d] flex flex-col items-center gap-6 min-h-[250px] justify-center overflow-x-auto relative shadow-inner">
         <div className="flex items-center justify-between w-full">
-          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">
             Node Memory Pointers & Active Pointers (Step {currentStep + 1})
           </h3>
           {/* Active Pointer Legend */}
           <div className="flex gap-3 text-xs font-mono">
-            <span className="flex items-center gap-1 text-red-400 font-bold">🔴 prev</span>
-            <span className="flex items-center gap-1 text-amber-400 font-bold">🟡 curr</span>
-            <span className="flex items-center gap-1 text-cyan-400 font-bold">🔵 next</span>
+            <span className="flex items-center gap-1 text-[#f85149] font-bold">🔴 prev</span>
+            <span className="flex items-center gap-1 text-[#d29922] font-bold">🟡 curr</span>
+            <span className="flex items-center gap-1 text-[#58a6ff] font-bold">🔵 next</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 my-4">
+        <div className="flex items-center gap-4 my-4">
           <AnimatePresence mode="popLayout">
             {currentState.nodes.map((val, idx) => {
               const isHead = idx === 0;
@@ -78,38 +78,49 @@ export const LinkedListRenderer: React.FC<LinkedListProps> = ({ semanticIR }) =>
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.7, opacity: 0, y: -20 }}
                     transition={CodeFlowSprings.nodeDropIn}
-                    className={`p-4 rounded-xl flex flex-col items-center min-w-[75px] border-2 font-mono relative ${
+                    className={`rounded-xl flex flex-col items-center border-2 font-mono relative overflow-hidden shadow-lg ${
                       isCurr
-                        ? 'bg-amber-950/90 border-amber-400 text-amber-200 ring-4 ring-amber-500/30'
+                        ? 'bg-[#d29922]/20 border-[#d29922] text-[#d29922] ring-4 ring-[#d29922]/30'
                         : isPrev
-                        ? 'bg-red-950/90 border-red-500 text-red-200'
+                        ? 'bg-[#f85149]/20 border-[#f85149] text-[#f85149]'
                         : isNext
-                        ? 'bg-cyan-950/90 border-cyan-500 text-cyan-200'
+                        ? 'bg-[#58a6ff]/20 border-[#58a6ff] text-[#79c0ff]'
                         : isHead
-                        ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200'
+                        ? 'bg-[#3fb950]/20 border-[#3fb950] text-[#3fb950]'
                         : isTail
-                        ? 'bg-purple-950/90 border-purple-500 text-purple-200'
-                        : 'bg-slate-800 border-slate-700 text-slate-200'
+                        ? 'bg-purple-950/80 border-purple-500 text-purple-200'
+                        : 'bg-[#161b22] border-[#30363d] text-[#e6edf3]'
                     }`}
                   >
                     {/* Floating Pointer Badges */}
-                    <div className="absolute -top-6 flex gap-1 text-[10px] font-bold">
-                      {isPrev && <span className="bg-red-600 text-white px-1.5 py-0.5 rounded shadow">PREV</span>}
-                      {isCurr && <span className="bg-amber-500 text-black px-1.5 py-0.5 rounded shadow">CURR</span>}
-                      {isNext && <span className="bg-cyan-600 text-white px-1.5 py-0.5 rounded shadow">NEXT</span>}
+                    <div className="absolute -top-6 left-0 right-0 flex justify-center gap-1 text-[10px] font-bold">
+                      {isPrev && <span className="bg-[#f85149] text-white px-1.5 py-0.5 rounded shadow">PREV</span>}
+                      {isCurr && <span className="bg-[#d29922] text-black px-1.5 py-0.5 rounded shadow">CURR</span>}
+                      {isNext && <span className="bg-[#58a6ff] text-[#0d1117] px-1.5 py-0.5 rounded shadow">NEXT</span>}
                     </div>
 
-                    <span className="text-[10px] uppercase font-bold tracking-wider mb-1 opacity-75">
+                    <div className="px-3 py-1 bg-[#161b22] border-b border-[#30363d] w-full text-center text-[10px] uppercase font-bold tracking-wider opacity-75">
                       {isHead ? 'HEAD' : isTail ? 'TAIL' : `NODE [${idx}]`}
-                    </span>
-                    <span className="text-2xl font-bold">{val}</span>
+                    </div>
+
+                    {/* VALUE | NEXT Sections */}
+                    <div className="flex items-center divide-x divide-[#30363d] p-3 gap-2">
+                      <div className="flex flex-col items-center px-2">
+                        <span className="text-[9px] text-[#8b949e] uppercase font-bold">VAL</span>
+                        <span className="text-xl font-bold">{val}</span>
+                      </div>
+                      <div className="flex flex-col items-center px-2">
+                        <span className="text-[9px] text-[#8b949e] uppercase font-bold">NEXT</span>
+                        <span className="text-xs text-[#58a6ff] font-bold">0x{val * 4}</span>
+                      </div>
+                    </div>
                   </motion.div>
 
                   {/* Pointer Arrow */}
                   <motion.span
                     layout
                     transition={CodeFlowSprings.pointerReconnect}
-                    className="text-emerald-400 text-xl font-bold px-1 select-none"
+                    className="text-[#3fb950] text-xl font-bold px-1 select-none"
                   >
                     ➔
                   </motion.span>
@@ -118,17 +129,17 @@ export const LinkedListRenderer: React.FC<LinkedListProps> = ({ semanticIR }) =>
             })}
           </AnimatePresence>
 
-          {/* NULL Pointer */}
-          <div className="p-3 bg-red-950/60 border border-red-800/60 rounded-xl text-red-400 font-mono font-bold text-xs select-none">
-            NULL
+          {/* Dashed ∅ NULL Terminator */}
+          <div className="p-3 bg-[#f85149]/10 border-2 border-dashed border-[#f85149]/60 rounded-xl text-[#f85149] font-mono font-bold text-sm flex items-center gap-1 select-none shadow-sm">
+            <span className="text-lg">∅</span> NULL
           </div>
         </div>
       </div>
 
       {/* Classifier Evidence Panel */}
-      <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80 font-mono text-xs text-slate-300">
-        <div className="text-emerald-400 font-bold mb-1">Classifier Evidence (98% Confidence):</div>
-        <div className="flex gap-4 flex-wrap text-slate-400">
+      <div className="bg-[#0d1117] p-4 rounded-xl border border-[#30363d] font-mono text-xs text-[#8b949e]">
+        <div className="text-[#3fb950] font-bold mb-1">Classifier Evidence (98% Confidence):</div>
+        <div className="flex gap-4 flex-wrap text-[#8b949e]">
           <span>✓ LinkedList class / struct definition</span>
           <span>✓ Node* next pointer chaining</span>
           <span>✓ insert / delete / reverse pointer operations</span>
