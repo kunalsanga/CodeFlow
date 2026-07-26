@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { IExecutionPayload } from "@/types/trace";
 import { getApiUrl } from "@/lib/apiClient";
+import { usePlaybackStore } from "@/store/usePlaybackStore";
 
 interface IExecutionState {
   code: string;
@@ -43,10 +44,13 @@ export const useExecutionStore = create<IExecutionState>((set, get) => ({
 
       const data: IExecutionPayload = await response.json();
 
-      if (data.status === "error" && !data.trace.length) {
+      if (data.status === "error" && (!data.trace || !data.trace.length)) {
         set({ error: data.error || "Execution failed", executionPayload: null, isExecuting: false });
+        usePlaybackStore.getState().setMaxSteps(0);
       } else {
         set({ executionPayload: data, isExecuting: false, error: null });
+        const stepCount = data.trace ? data.trace.length : 0;
+        usePlaybackStore.getState().setMaxSteps(stepCount);
       }
     } catch (err: any) {
       set({
@@ -54,6 +58,7 @@ export const useExecutionStore = create<IExecutionState>((set, get) => ({
         isExecuting: false,
         executionPayload: null
       });
+      usePlaybackStore.getState().setMaxSteps(0);
     }
   }
 }));

@@ -13,7 +13,37 @@ interface IDSAEvaluator {
 
 export class AlgorithmDetector {
   private static evaluators: IDSAEvaluator[] = [
-    // Linked List Evaluator (Singly / Doubly Linked List) - High Priority
+    // 1. Binary Search Tree Evaluator - Highest Priority for Tree Topology
+    {
+      name: 'binary-search-tree',
+      suggestedRenderer: 'bst-renderer',
+      evaluate(ast, code) {
+        let astScore = 0;
+        let traceScore = 0;
+        let graphScore = 0;
+        let behaviorScore = 0;
+        const evidence: string[] = [];
+
+        // Check if code defines left and right child pointers (Tree Node)
+        const hasTreePointers = (ast.detectedClasses.some(c => c.fields.includes('left') && c.fields.includes('right'))) ||
+          (/\bleft\b/i.test(code) && /\bright\b/i.test(code));
+
+        if (hasTreePointers) {
+          astScore += 50;
+          evidence.push('AST: Node struct/class defines both left and right child pointers');
+        }
+
+        if (/root|insert|inorder|preorder|postorder|rotate_right|rotate_left/i.test(code)) {
+          behaviorScore += 45;
+          evidence.push('Behavior: Tree insertion / traversal / rotation operations');
+        }
+
+        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
+        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
+      },
+    },
+
+    // 2. Linked List Evaluator (Singly / Doubly Linked List)
     {
       name: 'linked-list',
       suggestedRenderer: 'linked-list-renderer',
@@ -23,6 +53,12 @@ export class AlgorithmDetector {
         let graphScore = 0;
         let behaviorScore = 0;
         const evidence: string[] = [];
+
+        // Strict Guard: If code defines both 'left' and 'right' pointers, it is a Tree, NOT a Linked List!
+        const hasTreePointers = /\bleft\b.*?\bright\b|\bright\b.*?\bleft\b/i.test(code);
+        if (hasTreePointers) {
+          return { confidence: 0, evidence: [], stageScores: { astScore: 0, traceScore: 0, graphScore: 0, behaviorScore: 0 } };
+        }
 
         if (/struct\s+Node|class\s+Node|Node\*|next\b|prev\b|head\b|tail\b|LinkedList/i.test(code)) {
           astScore += 45;
@@ -44,7 +80,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // Recursion Call Stack Evaluator
+    // 3. Recursion Call Stack Evaluator
     {
       name: 'recursion',
       suggestedRenderer: 'recursion-renderer',
@@ -75,7 +111,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // BFS (Breadth-First Search) Evaluator
+    // 4. BFS (Breadth-First Search) Evaluator
     {
       name: 'bfs',
       suggestedRenderer: 'bfs-renderer',
@@ -104,7 +140,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // DFS (Depth-First Search) Evaluator
+    // 5. DFS (Depth-First Search) Evaluator
     {
       name: 'dfs',
       suggestedRenderer: 'dfs-renderer',
@@ -133,7 +169,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // Dijkstra Algorithm Evaluator
+    // 6. Dijkstra Algorithm Evaluator
     {
       name: 'dijkstra',
       suggestedRenderer: 'dijkstra-renderer',
@@ -166,7 +202,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // Merge Sort Evaluator
+    // 7. Merge Sort Evaluator
     {
       name: 'merge-sort',
       suggestedRenderer: 'merge-sort-renderer',
@@ -195,7 +231,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // Quick Sort Evaluator
+    // 8. Quick Sort Evaluator
     {
       name: 'quick-sort',
       suggestedRenderer: 'quick-sort-renderer',
@@ -224,7 +260,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // Trie Evaluator
+    // 9. Trie Evaluator
     {
       name: 'trie',
       suggestedRenderer: 'trie-renderer',
@@ -249,7 +285,7 @@ export class AlgorithmDetector {
       },
     },
 
-    // Dynamic Programming Evaluator (Requires explicit DP table/vector/memo storage)
+    // 10. Dynamic Programming Evaluator
     {
       name: 'dynamic-programming',
       suggestedRenderer: 'dp-renderer',
@@ -260,7 +296,6 @@ export class AlgorithmDetector {
         let behaviorScore = 0;
         const evidence: string[] = [];
 
-        // Strict Guard: If code does NOT have dp[] or memo[] or vector<vector<int>> dp, DP score is 0
         const hasDPStorage = /vector\s*<\s*vector\s*<\s*int\s*>\s*>\s*dp|vector\s*<\s*int\s*>\s*dp|\bdp\s*\[|\bmemo\s*\[|@lru_cache/i.test(code);
         if (!hasDPStorage) {
           return { confidence: 0, evidence: [], stageScores: { astScore: 0, traceScore: 0, graphScore: 0, behaviorScore: 0 } };
@@ -274,39 +309,6 @@ export class AlgorithmDetector {
         if (/dp\[i\]\[j\]|dp\[i\]|memo\[.*\]|knapsack|lcs|lis/i.test(code)) {
           behaviorScore += 60;
           evidence.push('Behavior: DP recurrence relation state transition with table storage');
-        }
-
-        const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
-        return { confidence, evidence, stageScores: { astScore, traceScore, graphScore, behaviorScore } };
-      },
-    },
-
-    // Binary Search Tree Evaluator
-    {
-      name: 'binary-search-tree',
-      suggestedRenderer: 'bst-renderer',
-      evaluate(ast, code) {
-        let astScore = 0;
-        let traceScore = 0;
-        let graphScore = 0;
-        let behaviorScore = 0;
-        const evidence: string[] = [];
-
-        const treeClass = ast.detectedClasses.find(c => c.fields.includes('left') && c.fields.includes('right'));
-        if (treeClass) {
-          astScore += 40;
-          evidence.push(`AST: Class '${treeClass.name}' has left and right child fields`);
-        }
-
-        if (/root|insert|inorder|preorder|postorder|rotate_right|rotate_left/i.test(code)) {
-          behaviorScore += 45;
-          evidence.push('Behavior: Tree insertion / traversal / rotation operations');
-        }
-
-        if (treeClass && !/Node|BST|Tree/i.test(treeClass.name) && !/root|insert|tree/i.test(code)) {
-          astScore = 10;
-          behaviorScore = 0;
-          evidence.push('Guard: Non-tree domain class detected without tree behavior');
         }
 
         const confidence = (astScore + traceScore + graphScore + behaviorScore) / 100;
