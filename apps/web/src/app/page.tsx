@@ -4,7 +4,6 @@ import React, { useMemo, useState } from "react";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { VisualizerCanvas } from "@/components/visualizer/VisualizerCanvas";
 import { ControlBar } from "@/components/controls/ControlBar";
-import { AICompanionPanel } from "@/components/inspectors/AICompanionPanel";
 import { StepChangesPanel } from "@/components/inspectors/StepChangesPanel";
 import { MemoryInsightsPanel } from "@/components/inspectors/MemoryInsightsPanel";
 import { VariableInspector } from "@/components/inspectors/VariableInspector";
@@ -27,9 +26,9 @@ import { AlgorithmDetector } from "@/semantic-engine/detectors/AlgorithmDetector
 import { StepExplainerEngine } from "@codeflow/ai-engine";
 import { LanguageDetector } from "@codeflow/language-adapters";
 
-import { SlidersHorizontal, Sparkles, Cpu, Eye, Layers, Brain, Lightbulb } from "lucide-react";
+import { SlidersHorizontal, Sparkles, Cpu, Eye, Layers, ScrollText, Terminal, Activity } from "lucide-react";
 
-type ViewMode = "visualizer" | "memory" | "ai";
+type ViewMode = "visualizer" | "memory" | "log";
 
 export default function Home() {
   const { code, executionPayload, error: executionError } = useExecutionStore();
@@ -82,7 +81,7 @@ export default function Home() {
     return generateExecutionStory(executionPayload.trace);
   }, [executionPayload]);
 
-  // Educational Step Rationale from AI Engine
+  // Factual Execution Log Stream
   const stepRationale = useMemo(() => {
     const algoType = semanticDetectionResult?.algorithmType || 'code';
     return StepExplainerEngine.generateRationale(null, currentStepIndex, algoType);
@@ -99,11 +98,6 @@ export default function Home() {
   }, [predictionQuestions, currentStepIndex]);
 
   const activeLineNumber = currentStepEvent?.line_number;
-  const currentCodeSnippet = useMemo(() => {
-    if (!activeLineNumber || !hasCode) return "";
-    const lines = code.split("\n");
-    return lines[activeLineNumber - 1] || "";
-  }, [code, activeLineNumber, hasCode]);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#0d1117]">
@@ -113,7 +107,7 @@ export default function Home() {
         onClose={() => setActiveConceptKey(null)}
       />
 
-      {/* Clean IDE Top Navigation Header */}
+      {/* CodeFlow v1.0 PRD Top Navigation Header */}
       <header className="h-14 bg-[#161b22] border-b border-[#30363d] px-6 flex items-center justify-between shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg shadow-md flex items-center gap-1">
@@ -129,7 +123,7 @@ export default function Home() {
                 </span>
               )}
             </h1>
-            <p className="text-[11px] text-gray-400">Language-Independent Code Execution & Visualization Platform</p>
+            <p className="text-[11px] text-gray-400 font-medium">Understand Code Through Interactive Execution</p>
           </div>
         </div>
 
@@ -143,7 +137,7 @@ export default function Home() {
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            <Eye className="w-3.5 h-3.5" /> Graph Visualizer
+            <Eye className="w-3.5 h-3.5" /> Canvas Visualizer
           </button>
           <button
             onClick={() => setActiveViewMode("memory")}
@@ -156,14 +150,14 @@ export default function Home() {
             <Layers className="w-3.5 h-3.5" /> Memory (RAM)
           </button>
           <button
-            onClick={() => setActiveViewMode("ai")}
+            onClick={() => setActiveViewMode("log")}
             className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              activeViewMode === "ai"
+              activeViewMode === "log"
                 ? "bg-indigo-600 text-white shadow-md"
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            <Brain className="w-3.5 h-3.5 text-amber-400" /> AI Rationale
+            <ScrollText className="w-3.5 h-3.5 text-emerald-400" /> Execution Log
           </button>
         </div>
 
@@ -190,16 +184,13 @@ export default function Home() {
         <div className={`${showAdvancedInspectors ? "col-span-4" : "col-span-5"} h-full border-r border-[#30363d] overflow-hidden transition-all flex flex-col justify-between`}>
           <CodeEditor activeLineNumber={activeLineNumber} />
 
-          {/* AI Educational Step Rationale Banner */}
+          {/* Factual Execution Log Stream Banner */}
           {hasCode && (
             <div className="p-3 bg-slate-900 border-t border-[#30363d] font-mono text-xs text-slate-300 flex items-start gap-2.5 shadow-inner">
-              <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <Activity className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <div className="font-bold text-amber-300">{stepRationale.reason}</div>
+                <div className="font-bold text-emerald-300">{stepRationale.reason}</div>
                 <div className="text-slate-400 mt-0.5">{stepRationale.explanation}</div>
-                {stepRationale.hint && (
-                  <div className="text-indigo-400 mt-1 italic">💡 Hint: {stepRationale.hint}</div>
-                )}
               </div>
             </div>
           )}
@@ -207,11 +198,14 @@ export default function Home() {
 
         {/* Center Column: Adaptive Canvas Mode */}
         <div className={`${showAdvancedInspectors ? "col-span-5" : "col-span-7"} h-full border-r border-[#30363d] overflow-hidden relative transition-all`}>
-          {activeViewMode === "ai" ? (
-            <div className="h-full w-full bg-[#0d1117] p-6 overflow-y-auto">
-              <AICompanionPanel
-                currentStepEvent={currentStepEvent}
-                codeSnippet={currentCodeSnippet}
+          {activeViewMode === "log" ? (
+            <div className="h-full w-full bg-[#0d1117] p-6 overflow-y-auto font-mono text-xs">
+              <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                <ScrollText className="w-5 h-5 text-emerald-400" /> Factual Execution Log Stream
+              </h2>
+              <ExecutionStoryPanel
+                storySteps={storySteps}
+                currentStepIndex={currentStepIndex}
               />
             </div>
           ) : (
@@ -225,7 +219,7 @@ export default function Home() {
             />
           )}
 
-          {/* Interactive Prediction Modal Overlay */}
+          {/* Interactive Prediction Overlay */}
           {isPredictionMode && activePrediction && (
             <div className="absolute top-4 left-4 right-4 z-30">
               <PredictionCard
