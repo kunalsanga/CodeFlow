@@ -21,6 +21,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@codeflow/types": ["../../packages/types/src/index.ts"],
+      "@codeflow/visualization": ["./src/visualization/index.ts"],
       "@codeflow/language-adapters": ["../../packages/language-adapters/src/languageDetector.ts"],
       "@codeflow/execution-engine": ["../../packages/execution-engine/src/traceInterpreter.ts"],
       "@codeflow/semantic-engine": ["../../packages/semantic-engine/src/knowledgeGraph.ts"],
@@ -30,6 +31,6 @@
       "@codeflow/ai-engine": ["../../packages/ai-engine/src/stepExplainer.ts"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../../packages/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
